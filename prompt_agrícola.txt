@@ -1,0 +1,67 @@
+TU ROL
+Actúa como una combinación de los siguientes perfiles:
+– Ingeniero de prompting experto en sistemas IA
+– Ingeniero agrónomo especializado en digitalización del campo
+– Product Manager senior en AgTech global
+– Desarrollador front-end fullstack (React, Firebase, PWA)
+– Diseñador UX/UI orientado a producto funcional y responsive
+– Emprendedor con mentalidad MVP validado y escalable
+
+OBJETIVO DEL ENCARGO
+Quiero que diseñes y construyas una PWA moderna, funcional, elegante y usable desde el móvil, llamada AgroDigital.
+Debe ser un cuaderno de campo agrícola inteligente, pensado específicamente para pequeños y medianos agricultores de todo el mundo, pero también adaptable a grandes explotaciones.
+La aplicación debe:
+    • Registrar datos clave de las actividades agrícolas diarias
+    • Calcular costes en tiempo real por insumo, riego y tratamiento
+    • Geolocalizar cada explotación y vincularla a datos climáticos actuales
+    • Integrar un agente de IA experto en agricultura que analice lo que hace el usuario y dé sugerencias (incluso aunque el usuario no pregunte)
+    • Permitir al usuario subir fotos de sus cultivos y recibir diagnósticos automáticos por IA (plagas, deficiencias, etc.)
+    • Generar tablas y gráficos básicos por fecha, cultivo y parcela
+    • Enviar notificaciones push con alertas climatológicas y recomendaciones
+    • Tener un diseño accesible, táctil, limpio y adaptado a condiciones reales de campo (sol, conexión baja, pantallas pequeñas)
+
+FUNCIONALIDADES DEL MVP (FASE 1)
+    1. Login con MongoDB Atlas (email + contraseña)
+    2. Registro de actividades con los siguientes campos:
+        ? Tipo de cultivo
+        ? Número de plantas
+        ? Superficie tratada
+        ? Agua usada (m³)
+        ? Productos usados (nombre, dosis, precio/kg o l)
+        ? Fecha
+    3. Cálculo automático de:
+        ? Coste de agua
+        ? Coste de insumos
+        ? Coste total diario
+        ? €/hectárea o €/1000?m²
+    4. Asistente IA agrícola:
+        ? Analiza el registro
+        ? Da recomendaciones precisas (ajuste de fertilización, frecuencia, etc.)
+        ? Opcional: permite preguntas libres
+    5. Clima:
+        ? Ubicación real de la parcela (GPS o selector)
+        ? Datos del clima actual y previsión de 48 h (OpenWeather API)
+        ? Alertas: olas de calor, lluvia, viento fuerte
+    6. Diseño:
+        ? Tailwind CSS + diseño limpio (verde, claro)
+        ? Modo oscuro
+        ? Navegación inferior para móvil
+        ? Estilo "liquid glass" opcional como skin
+    7. Tecnologías obligatorias:
+        ? React + TypeScript
+        ? MongoDB Atlas
+        ? OpenAI API (GPT-4 y Vision para IA)
+        ? PWA (manifest + service worker)
+        ? Generable como APK con Bubblewrap
+
+CONDICIONES DE USO
+    • Toda la lógica debe ser funcional y conectada (no prototipos ficticios)
+    • El diseño debe ser accesible, responsive, y usable con una sola mano
+    • El MVP debe poder ser desplegado en Hosting como aplicación real
+    • Todo debe quedar preparado para escalar en Fases 2 y 3 (estadísticas, informes, módulos premium)
+
+RESULTADO ESPERADO
+Entrega el código completo (frontend + lógica) con estructura de carpetas clara.
+
+Este prompt debe funcionar sin interpretación ambigua aunque se puede mejorar lo que tú consideres. Si algo no queda claro, decide tú como Product Manager técnico y me comentas.
+
