@@ -421,6 +421,7 @@ function LoginForm({ login, register, loading }: {
     password: '',
     name: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
     try {
@@ -512,16 +513,31 @@ function LoginForm({ login, register, loading }: {
             <label htmlFor="password-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Contraseña
             </label>
-            <input
-              id="password-input"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              className="input-field"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                id="password-input"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="input-field pr-10"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 focus:outline-none"
+                tabIndex={-1}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.336-3.236.938-4.675M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.062-4.675A9.956 9.956 0 0122 9c0 5.523-4.477 10-10 10a9.956 9.956 0 01-4.675-.938" /></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm2.828-2.828A9.956 9.956 0 0122 12c0 5.523-4.477 10-10 10S2 17.523 2 12c0-2.21.896-4.21 2.343-5.657" /></svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <button
@@ -691,16 +707,16 @@ function ActivityFormModal({
           </button>
         </div>
         <div className="overflow-y-auto max-h-[60vh] sm:max-h-[70vh] space-y-4">
-          <div>
+            <div>
             <label className="block text-gray-700 dark:text-gray-100 mb-2">Tipo de Cultivo *</label>
-            <input
-              type="text"
-              value={formData.cropType}
+              <input
+                type="text"
+                value={formData.cropType}
               onChange={e => setFormData({ ...formData, cropType: e.target.value })}
-              className="input-field"
+                className="input-field"
               placeholder="Ej. Tomates"
-            />
-          </div>
+              />
+            </div>
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-gray-700 dark:text-gray-100 mb-2">Plantas</label>
@@ -723,16 +739,16 @@ function ActivityFormModal({
               />
             </div>
           </div>
-          <div>
+            <div>
             <label className="block text-gray-700 dark:text-gray-100 mb-2">Agua usada (m³)</label>
-            <input
-              type="number"
-              value={formData.waterUsed}
+              <input
+                type="number"
+                value={formData.waterUsed}
               onChange={e => setFormData({ ...formData, waterUsed: parseFloat(e.target.value) || 0 })}
-              className="input-field"
-              min="0"
-            />
-          </div>
+                className="input-field"
+                min="0"
+              />
+            </div>
           <div>
             <label className="block text-gray-700 dark:text-gray-100 mb-2">Productos utilizados</label>
             <div className="grid grid-cols-5 gap-2 items-end -mt-7">
@@ -762,13 +778,13 @@ function ActivityFormModal({
               </select>
               <div className="flex flex-col">
                 <label className="block text-gray-700 dark:text-gray-100 mb-2">Precio (€)</label>
-                <input
-                  type="number"
-                  value={newProduct.pricePerUnit}
+              <input
+                type="number"
+                value={newProduct.pricePerUnit}
                   onChange={e => setNewProduct({ ...newProduct, pricePerUnit: parseFloat(e.target.value) || 0 })}
                   className="input-field"
-                  min="0"
-                />
+                min="0"
+              />
               </div>
               <button
                 type="button"
@@ -786,11 +802,11 @@ function ActivityFormModal({
                   <button type="button" className="text-red-500 ml-2" onClick={() => removeProduct(idx)}>
                     Quitar
                   </button>
-                </div>
+          </div>
               ))}
             </div>
-          </div>
-          <div>
+                </div>
+                <div>
             <label className="text-gray-600 dark:text-gray-200">Nota rápida</label>
             <textarea
               value={formData.notes || ""}
@@ -808,8 +824,8 @@ function ActivityFormModal({
               rows={2}
               placeholder="Añade una nota rápida sobre esta actividad..."
             />
-          </div>
-        </div>
+                </div>
+                </div>
         <div className="flex justify-end gap-4 mt-6">
           <button
             type="button"
@@ -1000,7 +1016,7 @@ function Dashboard({ user, logout }: {
   const filteredActivities = sortedActivities.filter(activity => {
     // Filtro por texto libre (cultivo, fecha, producto, nota)
     const searchMatch =
-      activity.cropType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    activity.cropType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       new Date(activity.date).toLocaleDateString().includes(searchTerm) ||
       (activity.products && activity.products.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))) ||
       (activity.notes && activity.notes.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -1219,14 +1235,14 @@ function Dashboard({ user, logout }: {
                 ))}
               </select>
               {/* Botón para limpiar filtros */}
-              <button
+                  <button
                 onClick={() => { setSearchTerm(''); setFilterDate(null); setFilterProduct('Todos'); }}
                 className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 transition"
-              >
+                  >
                 Limpiar filtros
-              </button>
-            </div>
-
+                  </button>
+                </div>
+                
             <header className="mb-8">
               <h1 className="text-2xl font-bold text-green-700 dark:text-green-300">
                 ¡Bienvenido, Roberto! 🌱
@@ -1240,17 +1256,17 @@ function Dashboard({ user, logout }: {
               <div className="bg-green-100 dark:bg-green-900 rounded-xl p-6 flex flex-col items-center shadow card-hover">
                 <span className="text-lg font-semibold text-green-700 dark:text-green-300">Gasto total</span>
                 <span className="text-2xl font-bold text-green-800 dark:text-green-200 mt-2">€{totalInvestment.toFixed(2)}</span>
-              </div>
+                    </div>
               <div className="bg-blue-100 dark:bg-blue-900 rounded-xl p-6 flex flex-col items-center shadow card-hover">
                 <span className="text-lg font-semibold text-blue-700 dark:text-blue-300">Consumo de agua</span>
                 <span className="text-2xl font-bold text-blue-800 dark:text-blue-200 mt-2">{totalWaterUsed} m³</span>
-              </div>
+                  </div>
               <div className="bg-yellow-100 dark:bg-yellow-900 rounded-xl p-6 flex flex-col items-center shadow card-hover">
                 <span className="text-lg font-semibold text-yellow-700 dark:text-yellow-300">Actividades este mes</span>
                 <span className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mt-2">{filteredActivities.filter(a => new Date(a.date).getMonth() === new Date().getMonth() && new Date(a.date).getFullYear() === new Date().getFullYear()).length}</span>
-              </div>
-            </div>
-
+                    </div>
+                  </div>
+                  
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
               Actividades recientes
             </h2>
@@ -1303,18 +1319,18 @@ function Dashboard({ user, logout }: {
                       </Listbox.Option>
                     ))}
                   </Listbox.Options>
-                </div>
+                  </div>
               </Listbox>
-            </div>
-
+                </div>
+                
             <div className="space-y-4">
               {filteredByCrop.length === 0 && (
                 <div className="text-center py-12">
                   <Leaf className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400 text-lg">No hay actividades registradas</p>
                   <p className="text-gray-400 dark:text-gray-500 text-sm">¡Añade tu primera actividad para comenzar!</p>
-                </div>
-              )}
+                  </div>
+                )}
               {filteredByCrop.map(a => (
                 <div 
                   className="bg-white dark:bg-gray-800 rounded-xl shadow-card hover:shadow-card-hover p-6 mb-4 cursor-pointer card-hover border border-gray-100 dark:border-gray-700"
@@ -1328,7 +1344,7 @@ function Dashboard({ user, logout }: {
                       <div className="flex items-center gap-3 mb-2">
                         <div className="bg-gradient-agro w-8 h-8 rounded-lg flex items-center justify-center">
                           <Leaf className="h-4 w-4 text-white" />
-                        </div>
+              </div>
                         <div>
                           <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{a.cropType}</h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -1339,22 +1355,22 @@ function Dashboard({ user, logout }: {
                               day: 'numeric' 
                             })}
                           </p>
-                        </div>
-                      </div>
-                      
+                </div>
+              </div>
+              
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
                           <p className="text-xs text-green-600 dark:text-green-400 font-medium">Inversión</p>
                           <p className="text-green-700 dark:text-green-300 font-bold text-lg">€{a.totalCost.toFixed(2)}</p>
-                        </div>
+                  </div>
                         <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
                           <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Superficie</p>
                           <p className="text-blue-700 dark:text-blue-300 font-bold text-lg">{a.surfaceArea} ha</p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                  
+                  </div>
+                </div>
+              </div>
+
                   {a.notes && (
                     <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800">
                       <div className="flex items-start gap-2">
@@ -1362,13 +1378,13 @@ function Dashboard({ user, logout }: {
                         <div>
                           <p className="text-xs text-yellow-700 dark:text-yellow-300 font-medium mb-1">Nota</p>
                           <p className="text-sm text-yellow-800 dark:text-yellow-200">{a.notes}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
+                  </div>
+                </div>
+              </div>
+            )}
+
                   <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <button
+                <button
                       onClick={e => { e.stopPropagation(); handleEditActivity(a); }}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
                     >
@@ -1376,20 +1392,20 @@ function Dashboard({ user, logout }: {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Editar
-                    </button>
-                    <button
+                </button>
+                <button
                       onClick={e => { e.stopPropagation(); handleDeleteActivity(a); }}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                    >
+                >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                       Borrar
-                    </button>
-                  </div>
-                </div>
+                </button>
+              </div>
+                              </div>
               ))}
-            </div>
+                            </div>
 
             <div
               className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border border-green-200 dark:border-green-800 rounded-xl shadow-card hover:shadow-card-hover p-6 mb-4 cursor-pointer card-hover transition-all duration-300 flex items-center mt-8"
@@ -1399,25 +1415,25 @@ function Dashboard({ user, logout }: {
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </div>
+                          </div>
               <div className="flex-1">
                 <h2 className="text-lg font-bold text-green-700 dark:text-green-200 mb-1">Historial de actividades</h2>
                 <p className="text-green-600 dark:text-green-300 text-sm">Haz clic para ver las últimas actividades y buscar por fecha</p>
-              </div>
+                        </div>
               <ChevronRight className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
+                        </div>
 
             <div className="flex gap-3 mt-6">
-              <button
+                    <button
                 onClick={handleExportCSV}
                 className="flex-1 bg-gradient-agro hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 flex items-center justify-center gap-2"
-              >
+                    >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Exportar a CSV
-              </button>
-            </div>
+                    </button>
+                </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 mb-6">
               <h2 className="text-lg font-bold text-blue-700 dark:text-blue-300 mb-3">Próximas actividades</h2>
@@ -1479,7 +1495,7 @@ function Dashboard({ user, logout }: {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-6">
                 <div className="mb-6">
                   <label className="block mb-3 font-medium text-gray-900 dark:text-white">Vista mensual</label>
-                </div>
+                    </div>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyData}>
@@ -1493,14 +1509,14 @@ function Dashboard({ user, logout }: {
                       <Bar yAxisId="right" dataKey="totalWater" fill="#3b82f6" name="Agua (L)" />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
-              </div>
+                    </div>
+                    </div>
             )}
-          </div>
+                    </div>
         );
 
       case 'inventory':
-        return (
+                      return (
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Inventario</h2>
@@ -1510,7 +1526,7 @@ function Dashboard({ user, logout }: {
               >
                 + Añadir producto
               </button>
-            </div>
+                          </div>
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white dark:bg-gray-800 rounded-xl shadow-card">
                 <thead>
@@ -1596,8 +1612,8 @@ function Dashboard({ user, logout }: {
                       onChange={e => setInventoryForm(f => ({ ...f, minStock: Number(e.target.value) }))}
                       className="input-field"
                       min={0}
-                    />
-                  </div>
+                            />
+                          </div>
                   <div className="flex justify-end gap-3 mt-6">
                     <button onClick={() => setShowInventoryForm(false)} className="btn-secondary">Cancelar</button>
                     <button onClick={handleSaveInventoryProduct} className="btn-danger">Guardar</button>
