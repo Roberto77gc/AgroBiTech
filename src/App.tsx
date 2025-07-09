@@ -1572,14 +1572,14 @@ function Dashboard({ user, logout }: {
                     <input
                       type="text"
                       placeholder="Nombre"
-                      className="w-full border rounded px-3 py-2"
+                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                       value={inventoryForm.name || ''}
                       onChange={e => setInventoryForm(f => ({ ...f, name: e.target.value }))}
                     />
                     <input
                       type="number"
                       placeholder="Cantidad"
-                      className="w-full border rounded px-3 py-2"
+                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                       value={inventoryForm.quantity || ''}
                       onChange={e => setInventoryForm(f => ({ ...f, quantity: Number(e.target.value) }))}
                     />
