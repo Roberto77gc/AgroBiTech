@@ -534,7 +534,7 @@ function LoginForm({ login, register, loading }: {
                 {showPassword ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.336-3.236.938-4.675M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.062-4.675A9.956 9.956 0 0122 9c0 5.523-4.477 10-10 10a9.956 9.956 0 01-4.675-.938" /></svg>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm2.828-2.828A9.956 9.956 0 0122 12c0 5.523-4.477 10-10 10S2 17.523 2 12c0-2.21.896-4.21 2.343-5.657" /></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm2.828-2.828A9.956 9.956 0 0122 12c0 5.523-4.477 10-10 10a9.956 9.956 0 01-4.675-.938" /></svg>
                 )}
               </button>
             </div>
@@ -943,7 +943,7 @@ function Dashboard({ user, logout }: {
   const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [filterProduct, setFilterProduct] = useState('Todos');
 
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // Efecto para mantener el foco en el input de búsqueda
   useEffect(() => {
@@ -1188,7 +1188,19 @@ function Dashboard({ user, logout }: {
     }
   };
 
-  const TabContent = () => {
+  function TabContent({ inputRef }: { inputRef: React.RefObject<HTMLInputElement | null> }) {
+    // Refs para los inputs del modal de inventario
+    const nameInputRef = useRef<HTMLInputElement | null>(null);
+    const quantityInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      if (showInventoryForm) {
+        setTimeout(() => {
+          nameInputRef.current?.focus();
+        }, 0);
+      }
+    }, [showInventoryForm]);
+
     switch (currentTab) {
       case 'home':
         // Obtener cultivos únicos
@@ -1570,18 +1582,25 @@ function Dashboard({ user, logout }: {
                   <h3 className="text-lg font-bold mb-4">{inventoryForm.id ? 'Editar producto' : 'Añadir producto'}</h3>
                   <div className="space-y-4">
                     <input
+                      ref={nameInputRef}
                       type="text"
                       placeholder="Nombre"
-                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                       value={inventoryForm.name || ''}
                       onChange={e => setInventoryForm(f => ({ ...f, name: e.target.value }))}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          quantityInputRef.current?.focus();
+                        }
+                      }}
+                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                     />
                     <input
+                      ref={quantityInputRef}
                       type="number"
                       placeholder="Cantidad"
-                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                       value={inventoryForm.quantity || ''}
                       onChange={e => setInventoryForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                     />
                     <select
                       className="input-field mb-2"
@@ -1734,7 +1753,7 @@ function Dashboard({ user, logout }: {
       </header>
 
       <main className="px-4 py-6 pb-24">
-        <TabContent />
+        <TabContent inputRef={searchInputRef} />
       </main>
 
       <nav className="glass-effect border-t border-gray-200 dark:border-gray-700 fixed bottom-0 left-0 right-0 z-30">
@@ -1896,6 +1915,18 @@ export default function AgroDigital() {
     setShowOnboarding(false);
     localStorage.setItem('agrodigital_onboarding', 'hidden');
   };
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const quantityInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (showInventoryForm) {
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 0);
+    }
+  }, [showInventoryForm]);
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
