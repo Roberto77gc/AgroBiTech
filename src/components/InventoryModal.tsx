@@ -6,10 +6,12 @@ interface InventoryModalProps {
   onClose: () => void;
   onSave: (product: Partial<InventoryProduct>) => void;
   initialData?: Partial<InventoryProduct>;
+  inventory: InventoryProduct[]; // <-- Añadido para validación de duplicados
 }
 
-const InventoryModal: React.FC<InventoryModalProps> = ({ visible, onClose, onSave, initialData }) => {
+const InventoryModal: React.FC<InventoryModalProps> = ({ visible, onClose, onSave, initialData, inventory }) => {
   const [form, setForm] = useState<Partial<InventoryProduct>>({});
+  const [error, setError] = useState<string | null>(null); // <-- Estado para errores
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const quantityInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -23,7 +25,32 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ visible, onClose, onSav
   }, [visible, initialData]);
 
   const handleSave = () => {
-    if (!form.name || !form.unit || !form.category || form.quantity === undefined) return;
+    // Validar campos obligatorios
+    if (!form.name || !form.unit || !form.category || form.quantity === undefined) {
+      setError("Por favor, completa todos los campos obligatorios.");
+      return;
+    }
+    // Validar valores numéricos no negativos
+    if (form.quantity < 0) {
+      setError("La cantidad no puede ser negativa.");
+      return;
+    }
+    if (form.minStock !== undefined && form.minStock < 0) {
+      setError("El stock mínimo no puede ser negativo.");
+      return;
+    }
+    // Validar duplicados (ignorando el producto actual si es edición)
+    const isDuplicate = inventory.some(
+      p =>
+        p.name.trim().toLowerCase() === form.name!.trim().toLowerCase() &&
+        p.unit === form.unit &&
+        (!form.id || p.id !== form.id)
+    );
+    if (isDuplicate) {
+      setError("Ya existe un producto con ese nombre y unidad.");
+      return;
+    }
+    setError(null); // Limpia el error si todo está bien
     onSave({ ...form, quantity: Number(form.quantity) });
     setForm({});
   };
@@ -35,6 +62,12 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ visible, onClose, onSav
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md">
         <h3 className="text-lg font-bold mb-4">{form.id ? 'Editar producto' : 'Añadir producto'}</h3>
         <div className="space-y-4">
+          {/* Mensaje de error */}
+          {error && (
+            <div className="text-red-600 bg-red-100 rounded p-2 mb-2 text-sm">
+              {error}
+            </div>
+          )}
           <input
             ref={nameInputRef}
             type="text"

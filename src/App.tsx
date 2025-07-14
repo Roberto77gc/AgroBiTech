@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef, useLayoutEffect } from 'react';
 import { 
   User, Calendar, Leaf, Sun, Moon, Home, BarChart3, Settings, AlertTriangle, XCircle,
   RefreshCw, ChevronsUpDown, MessageSquare, ChevronRight, PieChart, Box
@@ -950,7 +950,14 @@ function Dashboard({ user, logout }: {
   const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [filterProduct, setFilterProduct] = useState('Todos');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const inventorySearchInputRef = useRef<HTMLInputElement | null>(null); // Nuevo ref para el input de inventario
   const authFetch = useAuthFetch();
+  const [inventorySearch, setInventorySearch] = useState('');
+  const filteredInventory = inventory.filter(prod =>
+    prod.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+    prod.unit.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+    prod.category.toLowerCase().includes(inventorySearch.toLowerCase())
+  );
 
   // Efecto para mantener el foco en el input de búsqueda
   useEffect(() => {
@@ -958,6 +965,24 @@ function Dashboard({ user, logout }: {
       searchInputRef.current.focus();
     }
   }, [searchTerm]);
+
+  // Efecto para mantener el foco en el input de búsqueda de inventario al cambiar de pestaña o al cerrar el modal
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+    if (
+      currentTab === 'inventory' &&
+      !showInventoryForm &&
+      inventorySearchInputRef.current
+    ) {
+      timeout = setTimeout(() => {
+        inventorySearchInputRef.current?.focus();
+        console.log("Focus aplicado con useEffect y más retardo");
+      }, 150);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [currentTab, showInventoryForm]);
 
   // Obtener ubicación
   useEffect(() => {
@@ -1581,6 +1606,25 @@ function Dashboard({ user, logout }: {
                 + Añadir producto
               </button>
             </div>
+            {/* Buscador de inventario */}
+            <div className="mb-4">
+              {/*
+                Usamos autoFocus porque es la forma más fiable de asegurar que el input recibe el focus
+                automáticamente al montarse en el DOM. Esto es especialmente importante cuando el input
+                puede desmontarse y volver a montarse (por ejemplo, al cambiar de pestaña o cerrar un modal).
+                Los efectos como useEffect o useLayoutEffect pueden fallar en situaciones con renders, overlays
+                o animaciones, pero autoFocus lo gestiona React internamente en el momento justo.
+              */}
+              <input
+                ref={inventorySearchInputRef}
+                type="text"
+                value={inventorySearch}
+                onChange={e => setInventorySearch(e.target.value)}
+                placeholder="Buscar por nombre, unidad o categoría..."
+                className="w-full sm:w-72 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                autoFocus
+              />
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white dark:bg-gray-800 rounded-xl shadow-card">
                 <thead>
@@ -1593,10 +1637,10 @@ function Dashboard({ user, logout }: {
                   </tr>
                 </thead>
                 <tbody>
-                  {inventory.length === 0 && (
+                  {filteredInventory.length === 0 && (
                     <tr><td colSpan={5} className="text-center text-gray-400 py-6">No hay productos en inventario</td></tr>
                   )}
-                  {inventory.map(prod => (
+                  {filteredInventory.map(prod => (
                     <tr key={prod.id} className="border-b border-gray-100 dark:border-gray-700">
                       <td className="px-4 py-2 font-medium">{prod.name}</td>
                       <td className="px-4 py-2">{prod.quantity}</td>
@@ -1623,6 +1667,7 @@ function Dashboard({ user, logout }: {
               onClose={() => setShowInventoryForm(false)}
               onSave={handleSaveInventoryProduct}
               initialData={inventoryForm}
+              inventory={inventory} // <-- ¡Asegúrate de añadir esto!
             />
           </div>
         );
