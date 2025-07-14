@@ -15,6 +15,7 @@ import { InventoryProduct } from './types';
 import HistoryModal from './components/HistoryModal';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import InventoryModal from './components/InventoryModal';
 
 // Tipos de datos principales
 interface User {
@@ -89,7 +90,16 @@ const ThemeContext = createContext<{
 // Hooks simulados
 // Hooks simulados
 function useAuthSimulated() {
-  const [user, setUser] = useState<User | null>(null);
+  // Inicializa el usuario desde localStorage si existe
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Asegura que createdAt sea un Date
+      return { ...parsed, createdAt: new Date(parsed.createdAt) };
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
 
   // Login real usando el backend
@@ -135,6 +145,8 @@ function useAuthSimulated() {
       if (!response.ok) {
         throw new Error(data.message || 'Error en el registro');
       }
+      // Guarda el usuario en localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
       // Convertir createdAt a Date
       const userData = { ...data.user, createdAt: new Date(data.user.createdAt) };
       setUser(userData);
@@ -149,6 +161,8 @@ function useAuthSimulated() {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     console.log('🚪 Logout completado');
   };
 
@@ -926,24 +940,17 @@ function Dashboard({ user, logout }: {
   const [selectedCrop, setSelectedCrop] = useState("Todos");
   const [view, setView] = useState("mensual");
   const [showHistory, setShowHistory] = useState(false);
-
-  // 2. Estado para el inventario
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
   const [showInventoryForm, setShowInventoryForm] = useState(false);
   const [inventoryForm, setInventoryForm] = useState<Partial<InventoryProduct>>({});
-
   const lowStockProducts = useLowStockProducts(inventory);
-
-  // Hooks de datos
   const firestore = useActivities(user?._id || null);
   const weather = useWeatherSimulated(location);
   const aiAssistant = useAIAssistantSimulated();
-
-  // Nuevo estado para el filtro de fecha y producto
   const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [filterProduct, setFilterProduct] = useState('Todos');
-
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const authFetch = useAuthFetch();
 
   // Efecto para mantener el foco en el input de búsqueda
   useEffect(() => {
@@ -970,6 +977,20 @@ function Dashboard({ user, logout }: {
       setLocation({ lat: 40.4168, lng: -3.7038 });
     }
   }, []);
+
+  // Cargar inventario al iniciar sesión o cambiar de usuario
+  useEffect(() => {
+    if (!user?._id) return;
+    authFetch(`http://localhost:3001/api/inventory/${user._id}`)
+      .then(res => res.json())
+      .then(data => {
+        setInventory((data.products || []).map((p: Partial<InventoryProduct> & { _id: string }) => ({
+          ...p,
+          id: p._id
+        })));
+      })
+      .catch(() => setInventory([]));
+  }, [user?._id]);
 
   const handleAddActivity = async (activityData: any) => {
     if (!user || !user._id) {
@@ -1155,22 +1176,37 @@ function Dashboard({ user, logout }: {
       : getYearlyData(firestore.activities);
 
   // 3. Función para añadir o editar producto
-  const handleSaveInventoryProduct = () => {
+  const handleSaveInventoryProduct = async (product: Partial<InventoryProduct>) => {
     try {
-      if (!inventoryForm.name || !inventoryForm.unit || !inventoryForm.category || inventoryForm.quantity === undefined) return;
-      if (inventoryForm.id) {
-        setInventory(inv => inv.map(p => p.id === inventoryForm.id ? { ...p, ...inventoryForm, quantity: Number(inventoryForm.quantity) } as InventoryProduct : p));
-        toast.success('Producto actualizado correctamente');
+      if (!user?._id || !product.name || !product.unit || !product.category || product.quantity === undefined) return;
+      if (product.id) {
+        // Editar producto
+        const res = await authFetch(`http://localhost:3001/api/inventory/${product.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(product)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setInventory(inv => inv.map(p => p.id === product.id ? data.product : p));
+          toast.success('Producto actualizado correctamente');
+        } else {
+          toast.error('Error al actualizar el producto');
+        }
       } else {
-        setInventory(inv => [
-          ...inv,
-          {
-            ...inventoryForm,
-            id: Math.random().toString(36).slice(2),
-            quantity: Number(inventoryForm.quantity)
-          } as InventoryProduct
-        ]);
-        toast.success('Producto añadido correctamente');
+        // Añadir producto
+        const res = await authFetch('http://localhost:3001/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...product, userId: user._id })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setInventory(inv => [...inv, data.product]);
+          toast.success('Producto añadido correctamente');
+        } else {
+          toast.error('Error al añadir el producto');
+        }
       }
       setShowInventoryForm(false);
       setInventoryForm({});
@@ -1179,10 +1215,16 @@ function Dashboard({ user, logout }: {
     }
   };
 
-  const handleDeleteInventoryProduct = (id: string) => {
+  // Borrar producto
+  const handleDeleteInventoryProduct = async (id: string) => {
     try {
-      setInventory(inv => inv.filter(p => p.id !== id));
-      toast.success('Producto eliminado correctamente');
+      const res = await authFetch(`http://localhost:3001/api/inventory/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setInventory(inv => inv.filter(p => p.id !== id));
+        toast.success('Producto eliminado correctamente');
+      } else {
+        toast.error('Error al eliminar el producto');
+      }
     } catch (error) {
       toast.error('Error al eliminar el producto');
     }
@@ -1528,7 +1570,7 @@ function Dashboard({ user, logout }: {
         );
 
       case 'inventory':
-                      return (
+        return (
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Inventario</h2>
@@ -1538,7 +1580,7 @@ function Dashboard({ user, logout }: {
               >
                 + Añadir producto
               </button>
-                          </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white dark:bg-gray-800 rounded-xl shadow-card">
                 <thead>
@@ -1575,71 +1617,13 @@ function Dashboard({ user, logout }: {
                 </tbody>
               </table>
             </div>
-            {/* Modal/formulario para añadir/editar producto */}
-            {showInventoryForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md">
-                  <h3 className="text-lg font-bold mb-4">{inventoryForm.id ? 'Editar producto' : 'Añadir producto'}</h3>
-                  <div className="space-y-4">
-                    <input
-                      ref={nameInputRef}
-                      type="text"
-                      placeholder="Nombre"
-                      value={inventoryForm.name || ''}
-                      onChange={e => setInventoryForm(f => ({ ...f, name: e.target.value }))}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") {
-                          quantityInputRef.current?.focus();
-                        }
-                      }}
-                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <input
-                      ref={quantityInputRef}
-                      type="number"
-                      placeholder="Cantidad"
-                      value={inventoryForm.quantity || ''}
-                      onChange={e => setInventoryForm(f => ({ ...f, quantity: Number(e.target.value) }))}
-                      className="w-full border rounded px-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100"
-                    />
-                    <select
-                      className="input-field mb-2"
-                      value={inventoryForm.unit || ''}
-                      onChange={e => setInventoryForm(f => ({ ...f, unit: e.target.value as InventoryProduct['unit'] }))}
-                    >
-                      <option value="">Unidad</option>
-                      <option value="kg">kg</option>
-                      <option value="l">l</option>
-                      <option value="g">g</option>
-                      <option value="ml">ml</option>
-                    </select>
-                    <select
-                      className="input-field mb-3"
-                      value={inventoryForm.category || ''}
-                      onChange={e => setInventoryForm(f => ({ ...f, category: e.target.value as InventoryProduct['category'] }))}
-                    >
-                      <option value="">Categoría</option>
-                      <option value="fertilizer">Fertilizante</option>
-                      <option value="pesticide">Fitosanitario</option>
-                      <option value="seed">Semilla</option>
-                      <option value="other">Otro</option>
-                    </select>
-                    <label className="block text-gray-700 dark:text-gray-100 mb-2">Stock mínimo:</label>
-                    <input
-                      type="number"
-                      value={inventoryForm.minStock}
-                      onChange={e => setInventoryForm(f => ({ ...f, minStock: Number(e.target.value) }))}
-                      className="input-field"
-                      min={0}
-                            />
-                          </div>
-                  <div className="flex justify-end gap-3 mt-6">
-                    <button onClick={() => setShowInventoryForm(false)} className="btn-secondary">Cancelar</button>
-                    <button onClick={handleSaveInventoryProduct} className="btn-danger">Guardar</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Modal de inventario extraído a componente */}
+            <InventoryModal
+              visible={showInventoryForm}
+              onClose={() => setShowInventoryForm(false)}
+              onSave={handleSaveInventoryProduct}
+              initialData={inventoryForm}
+            />
           </div>
         );
 
@@ -1880,11 +1864,6 @@ export default function AgroDigital() {
     return false;
   });
 
-  // 2. Estado para el inventario
-  const [inventory, setInventory] = useState<InventoryProduct[]>([]);
-  const [showInventoryForm, setShowInventoryForm] = useState(false);
-  const [inventoryForm, setInventoryForm] = useState<Partial<InventoryProduct>>({});
-
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -1915,18 +1894,6 @@ export default function AgroDigital() {
     setShowOnboarding(false);
     localStorage.setItem('agrodigital_onboarding', 'hidden');
   };
-
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const nameInputRef = useRef<HTMLInputElement | null>(null);
-  const quantityInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (showInventoryForm) {
-      setTimeout(() => {
-        nameInputRef.current?.focus();
-      }, 0);
-    }
-  }, [showInventoryForm]);
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>

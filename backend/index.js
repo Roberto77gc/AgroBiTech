@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3001;
 require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET;
 const authenticateToken = require('./middleware/auth');
+const inventoryRouter = require('./routes/inventory');
 
 // Usar la URL de MongoDB desde variables de entorno
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://robertovalidosuarez:U4yK9DcZoFmZId7g@cluster0.nhk7mha.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
@@ -183,6 +184,8 @@ app.put('/activities/:activityId', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar la actividad' });
   }
 });
+
+app.use('/api/inventory', inventoryRouter);
 
 // Iniciar el servidor
 app.listen(PORT, () => {
