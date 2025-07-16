@@ -12,7 +12,7 @@ import { parseISO, format, getISOWeek, getYear } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { useLowStockProducts } from './hooks/useLowStockProducts';
 import { InventoryProduct } from './types';
-import HistoryModal from './components/HistoryModal';
+import { HistoryModal } from './components/HistoryModal';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import InventoryModal from './components/InventoryModal';
@@ -1608,13 +1608,6 @@ function Dashboard({ user, logout }: {
             </div>
             {/* Buscador de inventario */}
             <div className="mb-4">
-              {/*
-                Usamos autoFocus porque es la forma más fiable de asegurar que el input recibe el focus
-                automáticamente al montarse en el DOM. Esto es especialmente importante cuando el input
-                puede desmontarse y volver a montarse (por ejemplo, al cambiar de pestaña o cerrar un modal).
-                Los efectos como useEffect o useLayoutEffect pueden fallar en situaciones con renders, overlays
-                o animaciones, pero autoFocus lo gestiona React internamente en el momento justo.
-              */}
               <input
                 ref={inventorySearchInputRef}
                 type="text"
@@ -1625,22 +1618,40 @@ function Dashboard({ user, logout }: {
                 autoFocus
               />
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white dark:bg-gray-800 rounded-xl shadow-card">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left">Nombre</th>
-                    <th className="px-4 py-2 text-left">Cantidad</th>
-                    <th className="px-4 py-2 text-left">Unidad</th>
-                    <th className="px-4 py-2 text-left">Categoría</th>
-                    <th className="px-4 py-2"></th>
-                  </tr>
-                </thead>
+            {/* Cabecera de la tabla fuera del scroll */}
+            <table className="min-w-full bg-white dark:bg-gray-800 rounded-t-xl shadow-card" style={{ tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0 }}>
+              <colgroup>
+                <col style={{ width: '30%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 text-left">Nombre</th>
+                  <th className="px-4 py-2 text-left">Cantidad</th>
+                  <th className="px-4 py-2 text-left">Unidad</th>
+                  <th className="px-4 py-2 text-left">Categoría</th>
+                  <th className="px-4 py-2"></th>
+                </tr>
+              </thead>
+            </table>
+            {/* Solo el cuerpo de la tabla tiene scroll */}
+            <div className="max-h-[400px] overflow-y-auto rounded-b-xl shadow-card border-t-0">
+              <table className="min-w-full bg-white dark:bg-gray-800" style={{ tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0 }}>
+                <colgroup>
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
+                </colgroup>
                 <tbody>
-                  {filteredInventory.length === 0 && (
+                  {inventory.length === 0 && (
                     <tr><td colSpan={5} className="text-center text-gray-400 py-6">No hay productos en inventario</td></tr>
                   )}
-                  {filteredInventory.map(prod => (
+                  {inventory.map(prod => (
                     <tr key={prod.id} className="border-b border-gray-100 dark:border-gray-700">
                       <td className="px-4 py-2 font-medium">{prod.name}</td>
                       <td className="px-4 py-2">{prod.quantity}</td>
@@ -1667,7 +1678,7 @@ function Dashboard({ user, logout }: {
               onClose={() => setShowInventoryForm(false)}
               onSave={handleSaveInventoryProduct}
               initialData={inventoryForm}
-              inventory={inventory} // <-- ¡Asegúrate de añadir esto!
+              inventory={inventory}
             />
           </div>
         );
@@ -1867,11 +1878,14 @@ function Dashboard({ user, logout }: {
         </div>
       )}
 
-      {showHistory && (
-        <HistoryModal />
-      )}
+      <HistoryModal
+        open={showHistory}
+        onClose={() => setShowHistory(false)}
+        userId={user._id}
+        token={localStorage.getItem('token') || ''}
+      />
 
-      {lowStockProducts.length > 0 && (
+      {currentTab === 'inventory' && lowStockProducts.length > 0 && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded flex items-start gap-3 transition-all duration-300 animate-slide-up">
           <AlertTriangle className="text-yellow-500 mt-1" size={28} aria-hidden="true" />
           <div>

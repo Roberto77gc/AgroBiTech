@@ -9,6 +9,7 @@ require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET;
 const authenticateToken = require('./middleware/auth');
 const inventoryRouter = require('./routes/inventory');
+const movementsRouter = require('./routes/movements');
 
 // Usar la URL de MongoDB desde variables de entorno
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://robertovalidosuarez:U4yK9DcZoFmZId7g@cluster0.nhk7mha.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
@@ -186,6 +187,7 @@ app.put('/activities/:activityId', authenticateToken, async (req, res) => {
 });
 
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/movements', movementsRouter);
 
 // Iniciar el servidor
 app.listen(PORT, () => {
