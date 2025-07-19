@@ -16,28 +16,40 @@ export interface Movement {
   notes?: string;
 }
 
-export function useMovementsHistory(userId: string | undefined, token: string | undefined) {
+export function useMovementsHistory(token: string | undefined) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || !token) return;
+    if (!token) {
+      console.log('No hay token, no se hace fetch');
+      return;
+    }
+    console.log('Ejecutando fetch a /api/movements con token:', token);
+
     setLoading(true);
     setError(null);
-    fetch(`/api/movements/${userId}`, {
+
+    fetch('/api/movements', {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Error al obtener historial');
+      .then((res) => {
+        if (!res.ok) throw new Error('Error en la respuesta del servidor');
         return res.json();
       })
-      .then(data => setMovements(data.movements))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [userId, token]);
+      .then((data) => {
+        setMovements(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+        console.error('Error en fetch:', err); // <-- Agrega este log
+      });
+  }, [token]);
 
   return { movements, loading, error };
 } 

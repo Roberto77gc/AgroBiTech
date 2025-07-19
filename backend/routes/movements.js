@@ -25,16 +25,24 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// Obtener todos los movimientos (nuevo endpoint)
+router.get('/', auth, async (req, res) => {
+  try {
+    const movements = await Movement.find().sort({ date: -1 });
+    res.json({ movements });
+  } catch (err) {
+    res.status(500).json({ message: 'Error al obtener movimientos', error: err.message });
+  }
+});
+
 // Obtener movimientos de un usuario
 router.get('/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    // Opcional: comprobar que el usuario autenticado es el mismo que el solicitado
     if (req.user.userId !== userId) {
       return res.status(403).json({ message: 'No tienes permiso para ver estos movimientos.' });
     }
-    const movements = await Movement.find({ userId })
-      .sort({ date: -1 });
+    const movements = await Movement.find({ userId }).sort({ date: -1 });
     res.json({ movements });
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener movimientos', error: err.message });

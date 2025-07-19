@@ -17,9 +17,14 @@ const typeLabels: Record<string, string> = {
 };
 
 export const HistoryModal: React.FC<HistoryModalProps> = ({ open, onClose, userId, token }) => {
-  const { movements, loading, error } = useMovementsHistory(userId, token);
+  const { movements, loading, error } = useMovementsHistory(token);
 
   React.useEffect(() => {
+    if (!token) {
+      console.log('No hay token, no se hace fetch');
+      return;
+    }
+    console.log('Ejecutando fetch a /api/movements con token:', token);
     if (open) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -28,9 +33,27 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ open, onClose, userI
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open]);
+  }, [token]);
 
   if (!open) return null;
+
+  if (error || (typeof movements === 'string' && (movements as string).startsWith('Unexpected token'))) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg shadow-lg p-6 w-full max-w-3xl relative max-h-[80vh] flex flex-col">
+          <button
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+            onClick={onClose}
+            aria-label="Cerrar historial"
+          >
+            &times;
+          </button>
+          <h2 className="text-xl font-bold mb-4 text-yellow-800">Historial de movimientos</h2>
+          <p className="text-yellow-800 font-medium">No se pudo cargar el historial.<br/>Por favor, revisa la conexión con el servidor o contacta con soporte.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
