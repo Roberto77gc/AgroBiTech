@@ -1,206 +1,311 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import User from '../models/User';
-import { 
-  AuthResponse, 
-  LoginCredentials, 
-  RegisterCredentials, 
-  IUserResponse,
-  AuthRequest 
-} from '../types';
+import { Request, Response } from 'express'
+import jwt from 'jsonwebtoken'
+import User from '../models/User'
 
-// Generate JWT token
-const generateToken = (userId: string): string => {
-  const jwtSecret = process.env.JWT_SECRET;
-  const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
-  
-  if (!jwtSecret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
-  
-  return jwt.sign({ userId }, jwtSecret, { expiresIn: jwtExpiresIn } as jwt.SignOptions);
-};
+// Definir la interfaz AuthenticatedRequest localmente
+interface AuthenticatedRequest extends Request {
+	user?: {
+		userId: string
+		email: string
+		name: string
+	}
+}
 
-// Format user response (remove sensitive data)
-const formatUserResponse = (user: any): IUserResponse => ({
-  _id: user._id.toString(),
-  email: user.email,
-  name: user.name,
-  createdAt: user.createdAt
-});
+export const register = async (req: Request, res: Response) => {
+	try {
+		const { name, email, password } = req.body
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
-export const register = async (
-  req: Request<{}, AuthResponse, RegisterCredentials>,
-  res: Response<AuthResponse>
-): Promise<void> => {
-  try {
-    const { email, password, name } = req.body;
+		// Validaciones
+		if (!name || !email || !password) {
+			return res.status(400).json({ message: 'Todos los campos son requeridos' })
+		}
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        message: 'El usuario ya existe con este email',
-        error: 'User already exists'
-      });
-      return;
-    }
+		if (password.length < 6) {
+			return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' })
+		}
 
-    // Create new user
-    const user = new User({
-      email,
-      password,
-      name
-    });
+		// Verificar si el usuario ya existe
+		const existingUser = await User.findOne({ email })
+		if (existingUser) {
+			return res.status(400).json({ message: 'El usuario ya existe' })
+		}
 
-    await user.save();
+		// Crear nuevo usuario
+		const user = new User({
+			name,
+			email,
+			password
+		})
 
-    // Generate token
-    const token = generateToken(user._id.toString());
+		await user.save()
 
-    // Return success response
-    res.status(201).json({
-      success: true,
-      message: 'Usuario registrado exitosamente',
-      token,
-      user: formatUserResponse(user)
-    });
+		// Generar token
+		const token = jwt.sign(
+			{ userId: user._id, email: user.email },
+			process.env.JWT_SECRET || 'your-secret-key',
+			{ expiresIn: '7d' }
+		)
 
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor durante el registro',
-      error: 'Internal server error'
-    });
-  }
-};
+		return res.status(201).json({
+			success: true,
+			message: 'Usuario registrado exitosamente',
+			token,
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email
+			}
+		})
+	} catch (error) {
+		console.error('Error in register:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-export const login = async (
-  req: Request<{}, AuthResponse, LoginCredentials>,
-  res: Response<AuthResponse>
-): Promise<void> => {
-  try {
-    const { email, password } = req.body;
+export const login = async (req: Request, res: Response) => {
+	try {
+		const { email, password } = req.body
 
-    // Find user by email and include password field
-    const user = await User.findOne({ email }).select('+password');
-    
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Credenciales inválidas',
-        error: 'Invalid credentials'
-      });
-      return;
-    }
+		// Validaciones
+		if (!email || !password) {
+			return res.status(400).json({ message: 'Email y contraseña son requeridos' })
+		}
 
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    
-    if (!isPasswordValid) {
-      res.status(401).json({
-        success: false,
-        message: 'Credenciales inválidas',
-        error: 'Invalid credentials'
-      });
-      return;
-    }
+		// Buscar usuario
+		const user = await User.findOne({ email }).select('+password')
+		if (!user) {
+			return res.status(401).json({ message: 'Credenciales inválidas' })
+		}
 
-    // Generate token
-    const token = generateToken(user._id.toString());
+		// Verificar contraseña
+		const isPasswordValid = await user.comparePassword(password)
+		if (!isPasswordValid) {
+			return res.status(401).json({ message: 'Credenciales inválidas' })
+		}
 
-    // Return success response
-    res.status(200).json({
-      success: true,
-      message: 'Inicio de sesión exitoso',
-      token,
-      user: formatUserResponse(user)
-    });
+		// Generar token
+		const token = jwt.sign(
+			{ userId: user._id, email: user.email },
+			process.env.JWT_SECRET || 'your-secret-key',
+			{ expiresIn: '7d' }
+		)
 
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor durante el inicio de sesión',
-      error: 'Internal server error'
-    });
-  }
-};
+		return res.json({
+			success: true,
+			message: 'Login exitoso',
+			token,
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email
+			}
+		})
+	} catch (error) {
+		console.error('Error in login:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
 
-// @desc    Get current user profile
-// @route   GET /api/auth/profile
-// @access  Private
-export const getProfile = async (
-  req: AuthRequest,
-  res: Response<AuthResponse>
-): Promise<void> => {
-  try {
-    const user = req.user;
-    
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Usuario no autenticado',
-        error: 'User not authenticated'
-      });
-      return;
-    }
+export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const userId = req.user?.userId
+		if (!userId) {
+			return res.status(401).json({ message: 'Usuario no autenticado' })
+		}
 
-    res.status(200).json({
-      success: true,
-      message: 'Perfil obtenido exitosamente',
-      user: formatUserResponse(user)
-    });
+		const user = await User.findById(userId).select('-password')
+		if (!user) {
+			return res.status(404).json({ message: 'Usuario no encontrado' })
+		}
 
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: 'Internal server error'
-    });
-  }
-};
+		return res.json({
+			success: true,
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email
+			}
+		})
+	} catch (error) {
+		console.error('Error getting profile:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
 
-// @desc    Validate token
-// @route   GET /api/auth/validate
-// @access  Private
-export const validateToken = async (
-  req: AuthRequest,
-  res: Response<AuthResponse>
-): Promise<void> => {
-  try {
-    const user = req.user;
-    
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Token inválido',
-        error: 'Invalid token'
-      });
-      return;
-    }
+export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const userId = req.user?.userId
+		if (!userId) {
+			return res.status(401).json({ message: 'Usuario no autenticado' })
+		}
 
-    res.status(200).json({
-      success: true,
-      message: 'Token válido',
-      user: formatUserResponse(user)
-    });
+		const { name, email } = req.body
 
-  } catch (error) {
-    console.error('Token validation error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error validando token',
-      error: 'Token validation failed'
-    });
-  }
-};
+		// Validaciones
+		if (!name || !email) {
+			return res.status(400).json({ message: 'Nombre y email son requeridos' })
+		}
+
+		// Verificar si el email ya está en uso por otro usuario
+		const existingUser = await User.findOne({ email, _id: { $ne: userId } })
+		if (existingUser) {
+			return res.status(400).json({ message: 'El email ya está en uso' })
+		}
+
+		const user = await User.findByIdAndUpdate(
+			userId,
+			{ name, email },
+			{ new: true }
+		).select('-password')
+
+		if (!user) {
+			return res.status(404).json({ message: 'Usuario no encontrado' })
+		}
+
+		return res.json({
+			success: true,
+			message: 'Perfil actualizado exitosamente',
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email
+			}
+		})
+	} catch (error) {
+		console.error('Error updating profile:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
+
+export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const userId = req.user?.userId
+		if (!userId) {
+			return res.status(401).json({ message: 'Usuario no autenticado' })
+		}
+
+		const { currentPassword, newPassword } = req.body
+
+		// Validaciones
+		if (!currentPassword || !newPassword) {
+			return res.status(400).json({ message: 'Contraseña actual y nueva contraseña son requeridas' })
+		}
+
+		if (newPassword.length < 6) {
+			return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' })
+		}
+
+		// Buscar usuario con contraseña
+		const user = await User.findById(userId).select('+password')
+		if (!user) {
+			return res.status(404).json({ message: 'Usuario no encontrado' })
+		}
+
+		// Verificar contraseña actual
+		const isCurrentPasswordValid = await user.comparePassword(currentPassword)
+		if (!isCurrentPasswordValid) {
+			return res.status(401).json({ message: 'Contraseña actual incorrecta' })
+		}
+
+		// Actualizar contraseña
+		user.password = newPassword
+		await user.save()
+
+		return res.json({
+			success: true,
+			message: 'Contraseña cambiada exitosamente'
+		})
+	} catch (error) {
+		console.error('Error changing password:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
+
+export const deleteAccount = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const userId = req.user?.userId
+		if (!userId) {
+			return res.status(401).json({ message: 'Usuario no autenticado' })
+		}
+
+		const { password } = req.body
+
+		// Validaciones
+		if (!password) {
+			return res.status(400).json({ message: 'Contraseña es requerida para eliminar la cuenta' })
+		}
+
+		// Buscar usuario con contraseña
+		const user = await User.findById(userId).select('+password')
+		if (!user) {
+			return res.status(404).json({ message: 'Usuario no encontrado' })
+		}
+
+		// Verificar contraseña
+		const isPasswordValid = await user.comparePassword(password)
+		if (!isPasswordValid) {
+			return res.status(401).json({ message: 'Contraseña incorrecta' })
+		}
+
+		// Eliminar usuario
+		await User.findByIdAndDelete(userId)
+
+		return res.json({
+			success: true,
+			message: 'Cuenta eliminada exitosamente'
+		})
+	} catch (error) {
+		console.error('Error deleting account:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
+
+// Endpoint temporal para verificar usuarios existentes
+export const checkUsers = async (_req: Request, res: Response) => {
+	try {
+		const users = await User.find({}, { password: 0 }) // Excluir contraseñas
+		return res.json({
+			success: true,
+			users: users.map(user => ({
+				id: user._id,
+				name: user.name,
+				email: user.email,
+				createdAt: user.createdAt
+			}))
+		})
+	} catch (error) {
+		console.error('Error in checkUsers:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
+
+// Endpoint temporal para resetear contraseña
+export const resetPassword = async (req: Request, res: Response) => {
+	try {
+		const { email, newPassword } = req.body
+
+		if (!email || !newPassword) {
+			return res.status(400).json({ message: 'Email y nueva contraseña son requeridos' })
+		}
+
+		if (newPassword.length < 6) {
+			return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' })
+		}
+
+		const user = await User.findOne({ email }).select('+password')
+		if (!user) {
+			return res.status(404).json({ message: 'Usuario no encontrado' })
+		}
+
+		user.password = newPassword
+		await user.save()
+
+		return res.json({
+			success: true,
+			message: 'Contraseña reseteada exitosamente'
+		})
+	} catch (error) {
+		console.error('Error in resetPassword:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}

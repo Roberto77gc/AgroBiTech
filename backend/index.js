@@ -6,7 +6,8 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3001;
 require('dotenv').config();
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'llatecomoñ@PATO7Rry3_ñÇ__15qÑ';
+console.log('JWT_SECRET configurado:', JWT_SECRET ? 'SÍ' : 'NO');
 const authenticateToken = require('./middleware/auth');
 const inventoryRouter = require('./routes/inventory');
 const movementsRouter = require('./routes/movements');
@@ -61,7 +62,7 @@ app.post('/register', async (req, res) => {
     const newUser = await User.create({ email, password: hashedPassword, name });
 
     const { password: _, ...userWithoutPassword } = newUser.toObject();
-    res.status(201).json({ message: 'Usuario registrado con éxito.', user: userWithoutPassword });
+    res.status(201).json({ success: true, message: 'Usuario registrado con éxito.', user: userWithoutPassword });
   } catch (error) {
     console.error('Error en registro:', error);
     res.status(500).json({ message: 'Error al registrar el usuario.' });
@@ -96,6 +97,7 @@ app.post('/login', async (req, res) => {
 
     const { password: _, ...userWithoutPassword } = user.toObject();
     res.json({
+      success: true,
       message: 'Inicio de sesión exitoso.',
       user: userWithoutPassword,
       token // ← Aquí va el token
@@ -183,6 +185,84 @@ app.put('/activities/:activityId', authenticateToken, async (req, res) => {
     res.json({ activity: updated });
   } catch (error) {
     res.status(500).json({ message: 'Error al actualizar la actividad' });
+  }
+});
+
+// Endpoint para estadísticas del dashboard
+app.get('/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const activities = await Activity.find({ userId });
+    
+    // Calcular estadísticas básicas
+    const totalActivities = activities.length;
+    const totalCost = activities.reduce((sum, act) => sum + (act.totalCost || 0), 0);
+    const totalArea = activities.reduce((sum, act) => sum + (act.surfaceArea || 0), 0);
+    const avgCostPerHectare = totalArea > 0 ? totalCost / totalArea : 0;
+    
+    res.json({
+      success: true,
+      data: {
+        totalActivities,
+        totalCost,
+        totalArea,
+        avgCostPerHectare,
+        activitiesThisMonth: activities.filter(act => {
+          const actDate = new Date(act.createdAt);
+          const now = new Date();
+          return actDate.getMonth() === now.getMonth() && actDate.getFullYear() === now.getFullYear();
+        }).length
+      }
+    });
+  } catch (error) {
+    console.error('Error getting dashboard stats:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener estadísticas' });
+  }
+});
+
+// Endpoint para actividades del dashboard con paginación
+app.get('/dashboard/activities', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    
+    const activities = await Activity.find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+      
+    const total = await Activity.countDocuments({ userId });
+    const pages = Math.ceil(total / limit);
+    
+    res.json({
+      success: true,
+      data: activities,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages
+      }
+    });
+  } catch (error) {
+    console.error('Error getting activities:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener actividades' });
+  }
+});
+
+// Endpoint para inventario por usuario
+app.get('/api/inventory/:userId', async (req, res) => {
+  try {
+    // Por ahora devolver array vacío, puedes implementar el inventario después
+    res.json({
+      success: true,
+      products: []
+    });
+  } catch (error) {
+    console.error('Error getting inventory:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener inventario' });
   }
 });
 

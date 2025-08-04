@@ -57,11 +57,40 @@ export interface IInventoryProduct extends Document {
   userId: string;
   name: string;
   quantity: number;
+  unit: string;
+  category: string;
   minStock: number;
-  unit: 'kg' | 'l' | 'g' | 'ml';
-  category: 'fertilizer' | 'pesticide' | 'seed' | 'other';
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Inventory Request Types
+export interface CreateInventoryProductRequest {
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  minStock?: number;
+}
+
+export interface UpdateInventoryProductRequest {
+  name?: string;
+  quantity?: number;
+  unit?: string;
+  category?: string;
+  minStock?: number;
+}
+
+export interface InventoryResponse extends ApiResponse {
+  data?: {
+    products: IInventoryProduct[];
+  };
+}
+
+export interface SingleInventoryProductResponse extends ApiResponse {
+  data?: {
+    product: IInventoryProduct;
+  };
 }
 
 // Activity Types

@@ -1,55 +1,60 @@
-import { Router } from 'express';
-import { 
-  register, 
-  login, 
-  getProfile, 
-  validateToken 
-} from '../controllers/authController';
-import { 
-  registerValidation, 
-  loginValidation, 
-  handleValidationErrors 
-} from '../middleware/validation';
+import express from 'express';
 import { authMiddleware } from '../middleware/auth';
+import {
+  register,
+  login,
+  getProfile,
+  updateProfile,
+  changePassword,
+  deleteAccount,
+  checkUsers,
+  resetPassword
+} from '../controllers/authController';
 
-const router = Router();
+const router = express.Router();
+
+// === RUTAS PÚBLICAS ===
 
 // @route   POST /api/auth/register
-// @desc    Register a new user
+// @desc    Register new user
 // @access  Public
-router.post(
-  '/register',
-  registerValidation,
-  handleValidationErrors,
-  register
-);
+router.post('/register', register);
 
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post(
-  '/login',
-  loginValidation,
-  handleValidationErrors,
-  login
-);
+router.post('/login', login);
+
+// @route   GET /api/auth/check-users
+// @desc    Check existing users (temporary)
+// @access  Public
+router.get('/check-users', checkUsers);
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset user password (temporary)
+// @access  Public
+router.post('/reset-password', resetPassword);
+
+// === RUTAS PRIVADAS ===
 
 // @route   GET /api/auth/profile
-// @desc    Get current user profile
+// @desc    Get user profile
 // @access  Private
-router.get(
-  '/profile',
-  authMiddleware,
-  getProfile
-);
+router.get('/profile', authMiddleware, getProfile);
 
-// @route   GET /api/auth/validate
-// @desc    Validate JWT token
+// @route   PUT /api/auth/profile
+// @desc    Update user profile
 // @access  Private
-router.get(
-  '/validate',
-  authMiddleware,
-  validateToken
-);
+router.put('/profile', authMiddleware, updateProfile);
+
+// @route   PUT /api/auth/password
+// @desc    Change password
+// @access  Private
+router.put('/password', authMiddleware, changePassword);
+
+// @route   DELETE /api/auth/account
+// @desc    Delete account
+// @access  Private
+router.delete('/account', authMiddleware, deleteAccount);
 
 export default router;

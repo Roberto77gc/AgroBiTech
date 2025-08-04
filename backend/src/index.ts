@@ -4,7 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import demoRoutes from './routes/demo';
+import { DatabaseConnection } from './config/database';
+import authRoutes from './routes/auth';
+import dashboardRoutes from './routes/dashboard';
+import inventoryRoutes from './routes/inventory';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -32,8 +35,8 @@ app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
@@ -57,34 +60,35 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
+  const dbStatus = DatabaseConnection.getInstance().getConnectionStatus();
   res.status(200).json({
     success: true,
-    message: 'AgroDigital API is running - Demo Mode 🌱',
+    message: 'AgroDigital API is running 🌱',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    mode: 'demo'
+    database: dbStatus ? 'Connected' : 'Disconnected',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Demo routes (no database required)
-app.use('/api', demoRoutes);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/inventory', inventoryRoutes);
+
+// Legacy routes for compatibility
+app.use('/', authRoutes);
+app.use('/activities', dashboardRoutes);
+app.use('/api/actividades', dashboardRoutes);
 
 // Root route
 app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
-    message: '🌱 Bienvenido a AgroDigital API - Demo Mode',
+    message: '🌱 Bienvenido a AgroDigital API',
     version: '1.0.0',
-    mode: 'demo',
     environment: process.env.NODE_ENV || 'development',
     documentation: '/api/health',
-    demo: {
-      credentials: {
-        email: 'agricultor@demo.com',
-        password: 'demo123'
-      },
-      note: 'Este es un modo demo sin base de datos. Los datos son simulados para demostración.'
-    },
     endpoints: {
       health: 'GET /api/health',
       auth: {
@@ -95,13 +99,23 @@ app.get('/', (_req, res) => {
       },
       dashboard: {
         stats: 'GET /api/dashboard',
-        activities: 'GET /api/dashboard/activities'
+        activities: 'GET /api/dashboard/activities',
+        createActivity: 'POST /api/dashboard/activities',
+        updateActivity: 'PUT /api/dashboard/activities/:id',
+        deleteActivity: 'DELETE /api/dashboard/activities/:id'
+      },
+      inventory: {
+        getUserInventory: 'GET /api/inventory/:userId',
+        addProduct: 'POST /api/inventory',
+        updateProduct: 'PUT /api/inventory/:productId',
+        deleteProduct: 'DELETE /api/inventory/:productId',
+        getLowStock: 'GET /api/inventory/:userId/low-stock'
       }
     }
   });
 });
 
-// 404 handler for non-API routes
+// 404 handler
 app.use(notFoundHandler);
 
 // Global error handler
@@ -114,22 +128,25 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Start server function
 const startServer = async (): Promise<void> => {
   try {
-    // Start HTTP server (no database connection needed in demo mode)
+    // Connect to MongoDB
+    const db = DatabaseConnection.getInstance();
+    await db.connect();
+
+    // Start HTTP server
     const server = app.listen(PORT, () => {
       console.log(`
 🌱 ================================
 🚀 AgroDigital Backend Server
-🎭 Mode: DEMO (No Database)
+💎 Enterprise Grade Architecture
 🌍 Environment: ${NODE_ENV}
 📡 Port: ${PORT}
 🔗 URL: http://localhost:${PORT}
 🏥 Health: http://localhost:${PORT}/api/health
-📚 API Docs: http://localhost:${PORT}
+📊 Database: MongoDB Atlas Connected
+🔐 Security: JWT + Rate Limiting + Helmet
+⚡ Performance: Optimized
 
-🎯 Demo Credentials:
-   Email: agricultor@demo.com
-   Password: demo123
-
+🎯 Ready for Production!
 🌱 ================================
       `);
     });
@@ -138,8 +155,9 @@ const startServer = async (): Promise<void> => {
     const gracefulShutdown = async (signal: string): Promise<void> => {
       console.log(`\n⚠️  Received ${signal}. Starting graceful shutdown...`);
       
-      server.close(() => {
+      server.close(async () => {
         console.log('🔌 HTTP server closed');
+        await db.disconnect();
         console.log('✅ Graceful shutdown completed');
         process.exit(0);
       });

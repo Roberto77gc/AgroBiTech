@@ -1,130 +1,134 @@
-import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import User from '../models/User';
-import { AuthRequest, IUser, ApiResponse } from '../types';
+import { Request, Response, NextFunction } from 'express'
+import jwt from 'jsonwebtoken'
+import User from '../models/User'
 
 interface JwtPayload {
-  userId: string;
-  iat: number;
-  exp: number;
+	userId: string
+	iat: number
+	exp: number
+	iss?: string
+	aud?: string
+}
+
+interface AuthenticatedRequest extends Request {
+	user?: {
+		userId: string
+		email: string
+		name: string
+	}
 }
 
 export const authMiddleware = async (
-  req: AuthRequest,
-  res: Response<ApiResponse>,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({
-        success: false,
-        message: 'Access denied. No token provided or invalid format.',
-        error: 'Authentication required'
-      });
-      return;
-    }
+	req: AuthenticatedRequest,
+	res: Response,
+	next: NextFunction
+) => {
+	try {
+		// Get token from header
+		const authHeader = req.headers.authorization
+		
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			res.status(401).json({
+				success: false,
+				message: 'Token no proporcionado o formato inválido'
+			})
+			return
+		}
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+		const token = authHeader.substring(7) // Remove 'Bearer ' prefix
 
-    if (!token) {
-      res.status(401).json({
-        success: false,
-        message: 'Access denied. No token provided.',
-        error: 'Authentication required'
-      });
-      return;
-    }
+		if (!token) {
+			res.status(401).json({
+				success: false,
+				message: 'Token no proporcionado'
+			})
+			return
+		}
 
-    // Verify token
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET is not defined in environment variables');
-    }
+		// Verify token
+		const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+		const decoded = jwt.verify(token, jwtSecret) as JwtPayload
+		
+		// Get user from database
+		const user = await User.findById(decoded.userId)
+		
+		if (!user) {
+			res.status(401).json({
+				success: false,
+				message: 'Usuario no encontrado'
+			})
+			return
+		}
 
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    
-    // Get user from database
-    const user = await User.findById(decoded.userId);
-    
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Access denied. User not found.',
-        error: 'Invalid token'
-      });
-      return;
-    }
+		// Add user info to request object
+		req.user = {
+			userId: user._id.toString(),
+			email: user.email,
+			name: user.name
+		}
+		
+		next()
 
-    // Add user to request object
-    req.user = user as IUser;
-    next();
+	} catch (error) {
+		console.error('Auth middleware error:', error)
+		
+		if (error instanceof jwt.JsonWebTokenError) {
+			res.status(401).json({
+				success: false,
+				message: 'Token inválido'
+			})
+			return
+		}
 
-  } catch (error) {
-    console.error('Auth middleware error:', error);
-    
-    if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({
-        success: false,
-        message: 'Access denied. Invalid token.',
-        error: 'Token verification failed'
-      });
-      return;
-    }
+		if (error instanceof jwt.TokenExpiredError) {
+			res.status(401).json({
+				success: false,
+				message: 'Token expirado'
+			})
+			return
+		}
 
-    if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({
-        success: false,
-        message: 'Access denied. Token expired.',
-        error: 'Token has expired'
-      });
-      return;
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error during authentication.',
-      error: 'Authentication failed'
-    });
-  }
-};
+		res.status(500).json({
+			success: false,
+			message: 'Error interno del servidor durante autenticación'
+		})
+	}
+}
 
 // Optional auth middleware (doesn't fail if no token)
 export const optionalAuthMiddleware = async (
-  req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next();
-    }
+	req: AuthenticatedRequest,
+	_res: Response,
+	next: NextFunction
+) => {
+	try {
+		const authHeader = req.headers.authorization
+		
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			return next()
+		}
 
-    const token = authHeader.substring(7);
-    
-    if (!token) {
-      return next();
-    }
+		const token = authHeader.substring(7)
+		
+		if (!token) {
+			return next()
+		}
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return next();
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    const user = await User.findById(decoded.userId);
-    
-    if (user) {
-      req.user = user as IUser;
-    }
-    
-    next();
-  } catch (error) {
-    // In optional auth, we don't fail on error, just continue without user
-    next();
-  }
-};
+		const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+		const decoded = jwt.verify(token, jwtSecret) as JwtPayload
+		const user = await User.findById(decoded.userId)
+		
+		if (user) {
+			req.user = {
+				userId: user._id.toString(),
+				email: user.email,
+				name: user.name
+			}
+		}
+		
+		next()
+	} catch (error) {
+		// In optional auth, we don't fail on error, just continue without user
+		next()
+	}
+}

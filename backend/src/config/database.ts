@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-class DatabaseConnection {
+export class DatabaseConnection {
   private static instance: DatabaseConnection;
   private isConnected: boolean = false;
 
@@ -25,9 +25,7 @@ class DatabaseConnection {
         throw new Error('MONGO_URI environment variable is not defined');
       }
 
-      await mongoose.connect(mongoUri, {
-        // Remove deprecated options
-      });
+      await mongoose.connect(mongoUri);
 
       this.isConnected = true;
       console.log('✅ MongoDB connected successfully');
@@ -74,5 +72,3 @@ class DatabaseConnection {
     return this.isConnected;
   }
 }
-
-export const database = DatabaseConnection.getInstance();

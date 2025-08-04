@@ -1,23 +1,35 @@
-import { Router } from 'express';
-import { 
-  getDashboardStats, 
-  getActivitiesSummary 
-} from '../controllers/dashboardController';
+import express from 'express';
 import { authMiddleware } from '../middleware/auth';
+import {
+  getDashboardStats,
+  getAdvancedDashboard,
+  getActivities,
+  createActivity,
+  updateActivity,
+  deleteActivity,
+  getActivityById
+} from '../controllers/dashboardController';
 
-const router = Router();
+const router = express.Router();
 
-// Apply auth middleware to all dashboard routes
+// Aplicar middleware de autenticación a todas las rutas
 router.use(authMiddleware);
 
-// @route   GET /api/dashboard
-// @desc    Get dashboard statistics
-// @access  Private
-router.get('/', getDashboardStats);
+// Dashboard básico
+router.get('/stats', getDashboardStats);
 
-// @route   GET /api/dashboard/activities
-// @desc    Get activities summary with pagination and filters
-// @access  Private
-router.get('/activities', getActivitiesSummary);
+// Dashboard avanzado con gráficos
+router.get('/advanced', getAdvancedDashboard);
+
+// Actividades
+router.get('/activities', getActivities);
+router.post('/activities', createActivity);
+router.put('/activities/:id', updateActivity);
+router.delete('/activities/:id', deleteActivity);
+router.get('/activities/:id', getActivityById);
+
+// Rutas legacy para compatibilidad
+router.get('/', getDashboardStats);
+router.get('/activities', getActivities);
 
 export default router;
