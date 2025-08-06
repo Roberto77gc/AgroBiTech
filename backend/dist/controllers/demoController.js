@@ -140,7 +140,7 @@ const demoRegister = async (req, res) => {
     }
 };
 exports.demoRegister = demoRegister;
-const demoGetProfile = async (req, res) => {
+const demoGetProfile = async (_req, res) => {
     try {
         const user = demoUsers[0];
         res.status(200).json({
@@ -159,7 +159,7 @@ const demoGetProfile = async (req, res) => {
     }
 };
 exports.demoGetProfile = demoGetProfile;
-const demoValidateToken = async (req, res) => {
+const demoValidateToken = async (_req, res) => {
     try {
         const user = demoUsers[0];
         res.status(200).json({
@@ -178,7 +178,7 @@ const demoValidateToken = async (req, res) => {
     }
 };
 exports.demoValidateToken = demoValidateToken;
-const demoDashboardStats = async (req, res) => {
+const demoDashboardStats = async (_req, res) => {
     try {
         res.status(200).json({
             success: true,

@@ -9,7 +9,10 @@ const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const demo_1 = __importDefault(require("./routes/demo"));
+const database_1 = require("./config/database");
+const auth_1 = __importDefault(require("./routes/auth"));
+const dashboard_1 = __importDefault(require("./routes/dashboard"));
+const inventory_1 = __importDefault(require("./routes/inventory"));
 const errorHandler_1 = require("./middleware/errorHandler");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -45,30 +48,29 @@ else {
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/api/health', (_req, res) => {
+    const dbStatus = database_1.DatabaseConnection.getInstance().getConnectionStatus();
     res.status(200).json({
         success: true,
-        message: 'AgroDigital API is running - Demo Mode 🌱',
+        message: 'AgroDigital API is running 🌱',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        mode: 'demo'
+        database: dbStatus ? 'Connected' : 'Disconnected',
+        environment: process.env.NODE_ENV || 'development'
     });
 });
-app.use('/api', demo_1.default);
+app.use('/api/auth', auth_1.default);
+app.use('/api/dashboard', dashboard_1.default);
+app.use('/api/inventory', inventory_1.default);
+app.use('/', auth_1.default);
+app.use('/activities', dashboard_1.default);
+app.use('/api/actividades', dashboard_1.default);
 app.get('/', (_req, res) => {
     res.status(200).json({
         success: true,
-        message: '🌱 Bienvenido a AgroDigital API - Demo Mode',
+        message: '🌱 Bienvenido a AgroDigital API',
         version: '1.0.0',
-        mode: 'demo',
         environment: process.env.NODE_ENV || 'development',
         documentation: '/api/health',
-        demo: {
-            credentials: {
-                email: 'agricultor@demo.com',
-                password: 'demo123'
-            },
-            note: 'Este es un modo demo sin base de datos. Los datos son simulados para demostración.'
-        },
         endpoints: {
             health: 'GET /api/health',
             auth: {
@@ -79,7 +81,17 @@ app.get('/', (_req, res) => {
             },
             dashboard: {
                 stats: 'GET /api/dashboard',
-                activities: 'GET /api/dashboard/activities'
+                activities: 'GET /api/dashboard/activities',
+                createActivity: 'POST /api/dashboard/activities',
+                updateActivity: 'PUT /api/dashboard/activities/:id',
+                deleteActivity: 'DELETE /api/dashboard/activities/:id'
+            },
+            inventory: {
+                getUserInventory: 'GET /api/inventory/:userId',
+                addProduct: 'POST /api/inventory',
+                updateProduct: 'PUT /api/inventory/:productId',
+                deleteProduct: 'DELETE /api/inventory/:productId',
+                getLowStock: 'GET /api/inventory/:userId/low-stock'
             }
         }
     });
@@ -90,28 +102,30 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const startServer = async () => {
     try {
+        const db = database_1.DatabaseConnection.getInstance();
+        await db.connect();
         const server = app.listen(PORT, () => {
             console.log(`
 🌱 ================================
 🚀 AgroDigital Backend Server
-🎭 Mode: DEMO (No Database)
+💎 Enterprise Grade Architecture
 🌍 Environment: ${NODE_ENV}
 📡 Port: ${PORT}
 🔗 URL: http://localhost:${PORT}
 🏥 Health: http://localhost:${PORT}/api/health
-📚 API Docs: http://localhost:${PORT}
+📊 Database: MongoDB Atlas Connected
+🔐 Security: JWT + Rate Limiting + Helmet
+⚡ Performance: Optimized
 
-🎯 Demo Credentials:
-   Email: agricultor@demo.com
-   Password: demo123
-
+🎯 Ready for Production!
 🌱 ================================
       `);
         });
         const gracefulShutdown = async (signal) => {
             console.log(`\n⚠️  Received ${signal}. Starting graceful shutdown...`);
-            server.close(() => {
+            server.close(async () => {
                 console.log('🔌 HTTP server closed');
+                await db.disconnect();
                 console.log('✅ Graceful shutdown completed');
                 process.exit(0);
             });

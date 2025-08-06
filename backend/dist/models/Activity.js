@@ -34,164 +34,320 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const ProductUsedSchema = new mongoose_1.Schema({
-    name: {
+const FertilizerRecordSchema = new mongoose_1.Schema({
+    fertilizerType: {
         type: String,
-        required: [true, 'Product name is required'],
+        required: true,
         trim: true
     },
-    dose: {
+    fertilizerAmount: {
         type: Number,
-        required: [true, 'Product dose is required'],
-        min: [0, 'Dose cannot be negative']
+        required: true,
+        min: 0
+    },
+    fertilizerUnit: {
+        type: String,
+        required: true,
+        enum: ['kg', 'g', 'L', 'ml']
+    },
+    cost: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    productId: {
+        type: String,
+        trim: true
     },
     pricePerUnit: {
         type: Number,
-        required: [true, 'Price per unit is required'],
-        min: [0, 'Price cannot be negative']
+        min: 0
     },
-    unit: {
+    brand: {
         type: String,
-        enum: ['kg', 'l', 'g', 'ml'],
-        required: [true, 'Unit is required']
-    },
-    category: {
-        type: String,
-        enum: ['fertilizer', 'pesticide', 'seed', 'other'],
-        required: [true, 'Category is required']
-    }
-}, { _id: false });
-const SubActivityRecordSchema = new mongoose_1.Schema({
-    date: {
-        type: String,
-        required: [true, 'Date is required']
-    },
-    productos: [ProductUsedSchema],
-    observaciones: {
-        type: String,
-        trim: true,
-        maxlength: [500, 'Observations cannot exceed 500 characters']
-    },
-    coste: {
-        type: Number,
-        required: [true, 'Cost is required'],
-        min: [0, 'Cost cannot be negative']
-    }
-}, { timestamps: true });
-const ActivityRecordSchema = new mongoose_1.Schema({
-    userId: {
-        type: String,
-        required: [true, 'User ID is required'],
-        index: true
-    },
-    date: {
-        type: String,
-        required: [true, 'Date is required']
-    },
-    name: {
-        type: String,
-        required: [true, 'Activity name is required'],
-        trim: true,
-        maxlength: [100, 'Activity name cannot exceed 100 characters']
-    },
-    cropType: {
-        type: String,
-        required: [true, 'Crop type is required'],
         trim: true
     },
-    variety: {
+    supplier: {
         type: String,
-        required: [true, 'Variety is required'],
         trim: true
     },
-    transplantDate: {
+    purchaseDate: {
         type: String,
-        required: [true, 'Transplant date is required']
-    },
-    plantsCount: {
-        type: Number,
-        required: [true, 'Plants count is required'],
-        min: [1, 'Plants count must be at least 1']
-    },
-    surfaceArea: {
-        type: Number,
-        required: [true, 'Surface area is required'],
-        min: [0.01, 'Surface area must be greater than 0']
-    },
-    waterUsed: {
-        type: Number,
-        required: [true, 'Water used is required'],
-        min: [0, 'Water used cannot be negative']
-    },
-    products: [ProductUsedSchema],
-    location: {
-        lat: {
-            type: Number,
-            required: [true, 'Latitude is required'],
-            min: [-90, 'Invalid latitude'],
-            max: [90, 'Invalid latitude']
-        },
-        lng: {
-            type: Number,
-            required: [true, 'Longitude is required'],
-            min: [-180, 'Invalid longitude'],
-            max: [180, 'Invalid longitude']
-        }
-    },
-    totalCost: {
-        type: Number,
-        required: [true, 'Total cost is required'],
-        min: [0, 'Total cost cannot be negative']
-    },
-    costPerHectare: {
-        type: Number,
-        required: [true, 'Cost per hectare is required'],
-        min: [0, 'Cost per hectare cannot be negative']
-    },
-    sigpac: {
-        refCatastral: {
-            type: String,
-            trim: true
-        },
-        poligono: {
-            type: String,
-            trim: true
-        },
-        parcela: {
-            type: String,
-            trim: true
-        },
-        recinto: {
-            type: String,
-            trim: true
-        }
+        trim: true
     },
     notes: {
         type: String,
         trim: true,
-        maxlength: [1000, 'Notes cannot exceed 1000 characters']
+        maxlength: 200
+    }
+}, { _id: false });
+const DailyFertigationRecordSchema = new mongoose_1.Schema({
+    date: {
+        type: String,
+        required: true,
+        trim: true
     },
-    fertirriego: [SubActivityRecordSchema]
+    fertilizers: {
+        type: [FertilizerRecordSchema],
+        default: []
+    },
+    waterConsumption: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    waterUnit: {
+        type: String,
+        required: true,
+        enum: ['L', 'm3', 'gal']
+    },
+    totalCost: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    }
+}, { _id: false });
+const FertigationDataSchema = new mongoose_1.Schema({
+    enabled: {
+        type: Boolean,
+        default: false
+    },
+    dailyRecords: {
+        type: [DailyFertigationRecordSchema],
+        default: []
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    }
+}, { _id: false });
+const PhytosanitaryDataSchema = new mongoose_1.Schema({
+    enabled: {
+        type: Boolean,
+        default: false
+    },
+    treatmentType: {
+        type: String,
+        trim: true
+    },
+    productName: {
+        type: String,
+        trim: true
+    },
+    applicationDate: {
+        type: String,
+        validate: {
+            validator: function (v) {
+                return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);
+            },
+            message: 'Application date must be in YYYY-MM-DD format'
+        }
+    },
+    dosage: {
+        type: String,
+        trim: true
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    }
+}, { _id: false });
+const WaterDataSchema = new mongoose_1.Schema({
+    enabled: {
+        type: Boolean,
+        default: false
+    },
+    waterSource: {
+        type: String,
+        trim: true
+    },
+    irrigationType: {
+        type: String,
+        trim: true
+    },
+    dailyConsumption: {
+        type: Number,
+        min: 0
+    },
+    waterUnit: {
+        type: String,
+        enum: ['L', 'm3', 'gal']
+    },
+    cost: {
+        type: Number,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    }
+}, { _id: false });
+const EnergyDataSchema = new mongoose_1.Schema({
+    enabled: {
+        type: Boolean,
+        default: false
+    },
+    energyType: {
+        type: String,
+        trim: true
+    },
+    dailyConsumption: {
+        type: Number,
+        min: 0
+    },
+    energyUnit: {
+        type: String,
+        enum: ['kWh', 'Wh', 'MJ']
+    },
+    cost: {
+        type: Number,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    }
+}, { _id: false });
+const ActivitySchema = new mongoose_1.Schema({
+    userId: {
+        type: mongoose_1.default.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+    name: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 200
+    },
+    cropType: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 100,
+        index: true
+    },
+    plantCount: {
+        type: Number,
+        min: 0
+    },
+    area: {
+        type: Number,
+        required: true,
+        min: 0.01
+    },
+    areaUnit: {
+        type: String,
+        required: true,
+        enum: ['ha', 'm2'],
+        default: 'ha'
+    },
+    transplantDate: {
+        type: String,
+        validate: {
+            validator: function (v) {
+                return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);
+            },
+            message: 'Transplant date must be in YYYY-MM-DD format'
+        }
+    },
+    sigpacReference: {
+        type: String,
+        trim: true,
+        maxlength: 50
+    },
+    photos: [{
+            type: String,
+            trim: true
+        }],
+    fertigation: {
+        type: FertigationDataSchema,
+        default: () => ({ enabled: false })
+    },
+    phytosanitary: {
+        type: PhytosanitaryDataSchema,
+        default: () => ({ enabled: false })
+    },
+    water: {
+        type: WaterDataSchema,
+        default: () => ({ enabled: false })
+    },
+    energy: {
+        type: EnergyDataSchema,
+        default: () => ({ enabled: false })
+    },
+    location: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    },
+    weather: {
+        type: String,
+        trim: true,
+        maxlength: 100
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 1000
+    },
+    status: {
+        type: String,
+        enum: ['planning', 'in-progress', 'completed', 'cancelled'],
+        default: 'planning'
+    },
+    priority: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium'
+    },
+    totalCost: {
+        type: Number,
+        required: true,
+        min: 0
+    }
 }, {
     timestamps: true,
-    versionKey: false
+    collection: 'activities'
 });
-ActivityRecordSchema.index({ userId: 1, date: -1 });
-ActivityRecordSchema.index({ userId: 1, cropType: 1 });
-ActivityRecordSchema.index({ createdAt: -1 });
-ActivityRecordSchema.pre('save', function (next) {
-    if (this.products && this.products.length > 0) {
-        const productsCost = this.products.reduce((total, product) => {
-            return total + (product.dose * product.pricePerUnit);
-        }, 0);
-        const fertiriegoCost = this.fertirriego.reduce((total, fertirriego) => {
-            return total + fertirriego.coste;
-        }, 0);
-        this.totalCost = productsCost + fertiriegoCost;
-        this.costPerHectare = this.surfaceArea > 0 ? this.totalCost / this.surfaceArea : 0;
-    }
-    next();
-});
-const Activity = mongoose_1.default.model('Activity', ActivityRecordSchema);
+ActivitySchema.index({ userId: 1, createdAt: -1 });
+ActivitySchema.index({ userId: 1, cropType: 1 });
+ActivitySchema.index({ userId: 1, name: 1 });
+ActivitySchema.statics.findByUser = function (userId, options = {}) {
+    return this.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(options.limit || 0)
+        .skip(options.skip || 0);
+};
+ActivitySchema.statics.getStatsByUser = function (userId) {
+    return this.aggregate([
+        { $match: { userId: new mongoose_1.default.Types.ObjectId(userId) } },
+        {
+            $group: {
+                _id: null,
+                totalActivities: { $sum: 1 },
+                totalCost: { $sum: '$totalCost' },
+                totalArea: { $sum: '$area' },
+                avgCostPerHectare: { $avg: { $cond: [{ $eq: ['$areaUnit', 'ha'] }, { $divide: ['$totalCost', '$area'] }, { $divide: ['$totalCost', { $divide: ['$area', 10000] }] }] } }
+            }
+        }
+    ]);
+};
+ActivitySchema.methods.toJSON = function () {
+    const obj = this.toObject();
+    obj.id = obj._id;
+    return obj;
+};
+const Activity = mongoose_1.default.model('Activity', ActivitySchema);
 exports.default = Activity;
 //# sourceMappingURL=Activity.js.map

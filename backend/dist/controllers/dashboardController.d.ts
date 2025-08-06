@@ -1,23 +1,17 @@
-import { Response } from 'express';
-import { AuthRequest, ApiResponse } from '../types';
-interface DashboardStats {
-    totalActivities: number;
-    totalCost: number;
-    averageCostPerHectare: number;
-    activitiesThisMonth: number;
-    topCropTypes: Array<{
-        crop: string;
-        count: number;
-        totalCost: number;
-    }>;
-    monthlyStats: Array<{
-        month: string;
-        activities: number;
-        cost: number;
-    }>;
-    recentActivities: any[];
+import { Request, Response } from 'express';
+interface AuthenticatedRequest extends Request {
+    user?: {
+        userId: string;
+        email: string;
+        name: string;
+    };
 }
-export declare const getDashboardStats: (req: AuthRequest, res: Response<ApiResponse<DashboardStats>>) => Promise<void>;
-export declare const getActivitiesSummary: (req: AuthRequest, res: Response<ApiResponse>) => Promise<void>;
+export declare const getDashboardStats: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const getAdvancedDashboard: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const getActivities: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const createActivity: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const updateActivity: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const deleteActivity: (req: AuthenticatedRequest, res: Response) => Promise<void>;
+export declare const getActivityById: (req: AuthenticatedRequest, res: Response) => Promise<void>;
 export {};
 //# sourceMappingURL=dashboardController.d.ts.map

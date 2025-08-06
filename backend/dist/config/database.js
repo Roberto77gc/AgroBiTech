@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.database = void 0;
+exports.DatabaseConnection = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 class DatabaseConnection {
     constructor() {
@@ -25,7 +25,7 @@ class DatabaseConnection {
             if (!mongoUri) {
                 throw new Error('MONGO_URI environment variable is not defined');
             }
-            await mongoose_1.default.connect(mongoUri, {});
+            await mongoose_1.default.connect(mongoUri);
             this.isConnected = true;
             console.log('✅ MongoDB connected successfully');
             mongoose_1.default.connection.on('error', (err) => {
@@ -64,5 +64,5 @@ class DatabaseConnection {
         return this.isConnected;
     }
 }
-exports.database = DatabaseConnection.getInstance();
+exports.DatabaseConnection = DatabaseConnection;
 //# sourceMappingURL=database.js.map

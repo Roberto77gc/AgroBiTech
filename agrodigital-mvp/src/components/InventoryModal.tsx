@@ -1,239 +1,221 @@
 import React, { useState, useEffect } from 'react'
-import { 
-	X, 
-	Plus, 
-	Package, 
-	Edit3, 
-	Trash2, 
-	AlertTriangle,
-	Save,
-	Search
-} from 'lucide-react'
+import { X, Plus, Edit, Trash2, Package, Search, AlertTriangle, AlertCircle, Clock, MapPin } from 'lucide-react'
+import type { InventoryItem, InventoryAlert } from '../types'
+import { inventoryAPI } from '../services/api'
 import { toast } from 'react-toastify'
-import type { InventoryProduct, ProductCategory } from '../types'
 
 interface InventoryModalProps {
 	isOpen: boolean
 	onClose: () => void
-	onProductAdded: () => void
-	onProductUpdated: () => void
-	onProductDeleted: () => void
 	isDarkMode: boolean
 }
-
-const PRODUCT_CATEGORIES: { value: ProductCategory; label: string; icon: string }[] = [
-	{ value: 'fertilizantes', label: 'Fertilizantes', icon: '🌱' },
-	{ value: 'fitosanitarios', label: 'Fitosanitarios', icon: '🛡️' },
-	{ value: 'semillas', label: 'Semillas', icon: '🌾' },
-	{ value: 'herramientas', label: 'Herramientas', icon: '🔧' },
-	{ value: 'maquinaria', label: 'Maquinaria', icon: '🚜' },
-	{ value: 'combustible', label: 'Combustible', icon: '⛽' },
-	{ value: 'otros', label: 'Otros', icon: '📦' }
-]
-
-const UNITS = ['kg', 'l', 'unidades', 'm²', 'ha', 'toneladas', 'litros']
 
 const InventoryModal: React.FC<InventoryModalProps> = ({
 	isOpen,
 	onClose,
-	onProductAdded,
-	onProductUpdated,
-	onProductDeleted,
 	isDarkMode
 }) => {
-	const [products, setProducts] = useState<InventoryProduct[]>([])
-	const [filteredProducts, setFilteredProducts] = useState<InventoryProduct[]>([])
+	const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+	const [alerts, setAlerts] = useState<InventoryAlert[]>([])
+	const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([])
+	const [selectedType, setSelectedType] = useState<'fertilizer' | 'water' | 'phytosanitary'>('fertilizer')
 	const [searchTerm, setSearchTerm] = useState('')
-	const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all')
 	const [isLoading, setIsLoading] = useState(false)
-	const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
 	const [showForm, setShowForm] = useState(false)
-
-	// Form state
+	const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
 	const [formData, setFormData] = useState({
-		name: '',
-		category: 'fertilizantes' as ProductCategory,
-		description: '',
-		quantity: 0,
-		unit: 'kg',
-		minStock: 0,
-		price: 0,
-		supplier: '',
+		productId: '',
+		productName: '',
+		productType: 'fertilizer' as 'fertilizer' | 'water' | 'phytosanitary',
+		currentStock: '',
+		minStock: '',
+		criticalStock: '',
+		unit: '',
 		location: '',
-		notes: ''
+		expiryDate: ''
 	})
 
+	// Cargar datos al abrir el modal
 	useEffect(() => {
 		if (isOpen) {
-			loadProducts()
+			loadInventoryData()
 		}
 	}, [isOpen])
 
+	// Filtrar items cuando cambie el tipo o búsqueda
 	useEffect(() => {
-		filterProducts()
-	}, [products, searchTerm, selectedCategory])
-
-	const filterProducts = () => {
-		let filtered = products
-
+		let filtered = inventoryItems.filter(item => item.productType === selectedType)
+		
 		if (searchTerm) {
-			filtered = filtered.filter(product =>
-				product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				product.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
+			filtered = filtered.filter(item =>
+				item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				item.location.toLowerCase().includes(searchTerm.toLowerCase())
 			)
 		}
+		
+		setFilteredItems(filtered)
+	}, [inventoryItems, selectedType, searchTerm])
 
-		if (selectedCategory !== 'all') {
-			filtered = filtered.filter(product => product.category === selectedCategory)
-		}
-
-		setFilteredProducts(filtered)
-	}
-
-	const loadProducts = async () => {
-		setIsLoading(true)
+	const loadInventoryData = async () => {
 		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch('http://localhost:3000/api/inventory', {
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				setProducts(data.products || [])
-			} else {
-				toast.error('Error al cargar el inventario')
+			setIsLoading(true)
+			const [itemsResponse, alertsResponse] = await Promise.all([
+				inventoryAPI.getAll(),
+				inventoryAPI.getAlerts()
+			])
+			
+			if (itemsResponse.success) {
+				setInventoryItems(itemsResponse.items)
+			}
+			
+			if (alertsResponse.success) {
+				setAlerts(alertsResponse.alerts)
 			}
 		} catch (error) {
-			console.error('Error loading products:', error)
-			toast.error('Error de conexión')
+			console.error('Error loading inventory data:', error)
+			toast.error('Error al cargar datos de inventario')
 		} finally {
 			setIsLoading(false)
 		}
+	}
+
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+		const { name, value } = e.target
+		setFormData(prev => ({
+			...prev,
+			[name]: value
+		}))
 	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		setIsLoading(true)
+		
+		if (!formData.productName || !formData.currentStock || !formData.minStock || !formData.criticalStock || !formData.unit || !formData.location) {
+			toast.error('Por favor completa todos los campos obligatorios')
+			return
+		}
 
 		try {
-			const token = localStorage.getItem('token')
-			const url = editingProduct 
-				? `http://localhost:3000/api/inventory/${editingProduct._id}`
-				: 'http://localhost:3000/api/inventory'
-			
-			const method = editingProduct ? 'PUT' : 'POST'
+			setIsLoading(true)
+			const itemData = {
+				...formData,
+				currentStock: parseFloat(formData.currentStock),
+				minStock: parseFloat(formData.minStock),
+				criticalStock: parseFloat(formData.criticalStock),
+				active: true
+			}
 
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(formData)
-			})
-
-			if (response.ok) {
-				toast.success(editingProduct ? 'Producto actualizado' : 'Producto añadido')
-				resetForm()
-				loadProducts()
-				editingProduct ? onProductUpdated() : onProductAdded()
+			if (editingItem) {
+				// Actualizar item existente
+				const response = await inventoryAPI.update(editingItem._id, itemData)
+				if (response.success) {
+					toast.success('Item de inventario actualizado correctamente')
+					await loadInventoryData()
+					handleCloseForm()
+				} else {
+					toast.error('Error al actualizar item de inventario')
+				}
 			} else {
-				const error = await response.json()
-				toast.error(error.message || 'Error al guardar')
+				// Crear nuevo item
+				const response = await inventoryAPI.create(itemData)
+				if (response.success) {
+					toast.success('Item de inventario creado correctamente')
+					await loadInventoryData()
+					handleCloseForm()
+				} else {
+					toast.error('Error al crear item de inventario')
+				}
 			}
 		} catch (error) {
-			console.error('Error saving product:', error)
-			toast.error('Error de conexión')
+			console.error('Error saving inventory item:', error)
+			toast.error('Error al guardar item de inventario')
 		} finally {
 			setIsLoading(false)
 		}
 	}
 
-	const handleEdit = (product: InventoryProduct) => {
-		setEditingProduct(product)
+	const handleEdit = (item: InventoryItem) => {
+		setEditingItem(item)
 		setFormData({
-			name: product.name,
-			category: product.category,
-			description: product.description || '',
-			quantity: product.quantity,
-			unit: product.unit,
-			minStock: product.minStock,
-			price: product.price,
-			supplier: product.supplier || '',
-			location: product.location || '',
-			notes: product.notes || ''
+			productId: item.productId,
+			productName: item.productName,
+			productType: item.productType,
+			currentStock: item.currentStock.toString(),
+			minStock: item.minStock.toString(),
+			criticalStock: item.criticalStock.toString(),
+			unit: item.unit,
+			location: item.location,
+			expiryDate: item.expiryDate || ''
 		})
 		setShowForm(true)
 	}
 
-	const handleDelete = async (productId: string) => {
-		if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return
+	const handleDelete = async (itemId: string) => {
+		if (!window.confirm('¿Estás seguro de que quieres eliminar este item del inventario?')) {
+			return
+		}
 
-		setIsLoading(true)
 		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch(`http://localhost:3000/api/inventory/${productId}`, {
-				method: 'DELETE',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
-
-			if (response.ok) {
-				toast.success('Producto eliminado')
-				loadProducts()
-				onProductDeleted()
+			setIsLoading(true)
+			const response = await inventoryAPI.delete(itemId)
+			if (response.success) {
+				toast.success('Item de inventario eliminado correctamente')
+				await loadInventoryData()
 			} else {
-				toast.error('Error al eliminar')
+				toast.error('Error al eliminar item de inventario')
 			}
 		} catch (error) {
-			console.error('Error deleting product:', error)
-			toast.error('Error de conexión')
+			console.error('Error deleting inventory item:', error)
+			toast.error('Error al eliminar item de inventario')
 		} finally {
 			setIsLoading(false)
 		}
 	}
 
-	const resetForm = () => {
-		setFormData({
-			name: '',
-			category: 'fertilizantes',
-			description: '',
-			quantity: 0,
-			unit: 'kg',
-			minStock: 0,
-			price: 0,
-			supplier: '',
-			location: '',
-			notes: ''
-		})
-		setEditingProduct(null)
+	const handleCloseForm = () => {
 		setShowForm(false)
+		setEditingItem(null)
+		setFormData({
+			productId: '',
+			productName: '',
+			productType: 'fertilizer',
+			currentStock: '',
+			minStock: '',
+			criticalStock: '',
+			unit: '',
+			location: '',
+			expiryDate: ''
+		})
 	}
 
-	const getCategoryIcon = (category: ProductCategory) => {
-		return PRODUCT_CATEGORIES.find(cat => cat.value === category)?.icon || '📦'
+	const handleMarkAlertAsRead = async (alertId: string) => {
+		try {
+			const response = await inventoryAPI.markAlertAsRead(alertId)
+			if (response.success) {
+				await loadInventoryData()
+			}
+		} catch (error) {
+			console.error('Error marking alert as read:', error)
+		}
 	}
 
-	const getCategoryLabel = (category: ProductCategory) => {
-		return PRODUCT_CATEGORIES.find(cat => cat.value === category)?.label || 'Otros'
+	const getStockStatus = (item: InventoryItem) => {
+		if (item.currentStock <= item.criticalStock) {
+			return { status: 'critical', icon: AlertTriangle, color: 'text-red-500' }
+		} else if (item.currentStock <= item.minStock) {
+			return { status: 'warning', icon: AlertCircle, color: 'text-yellow-500' }
+		} else {
+			return { status: 'normal', icon: Package, color: 'text-green-500' }
+		}
 	}
 
-	const isLowStock = (product: InventoryProduct) => {
-		return product.quantity <= product.minStock
-	}
+
 
 	if (!isOpen) return null
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-			<div className={`w-full max-w-6xl max-h-[90vh] rounded-xl shadow-2xl transition-colors ${
+			<div className={`relative w-full max-w-7xl max-h-[90vh] overflow-hidden rounded-lg shadow-xl ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				{/* Header */}
@@ -241,434 +223,434 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 					isDarkMode ? 'border-gray-700' : 'border-gray-200'
 				}`}>
 					<div className="flex items-center space-x-3">
-						<Package className="h-6 w-6 text-green-500" />
-						<h2 className="text-xl font-bold">Gestión de Inventario</h2>
+						<Package className="w-6 h-6 text-purple-500" />
+						<h2 className="text-xl font-semibold">Gestión de Inventario</h2>
 					</div>
-					<div className="flex items-center space-x-2">
-						<button
-							onClick={() => setShowForm(true)}
-							className={`flex items-center space-x-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium`}
-						>
-							<Plus className="h-4 w-4" />
-							<span>Nuevo Producto</span>
-						</button>
-						<button
-							onClick={onClose}
-							className={`p-2 rounded-lg transition-colors ${
-								isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-							}`}
-						>
-							<X className="h-5 w-5" />
-						</button>
-					</div>
+					<button
+						onClick={onClose}
+						className={`p-2 rounded-lg hover:bg-opacity-80 ${
+							isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+						}`}
+					>
+						<X className="w-5 h-5" />
+					</button>
 				</div>
 
 				<div className="flex h-[calc(90vh-120px)]">
-					{/* Lista de productos */}
-					<div className={`flex-1 border-r ${
-						isDarkMode ? 'border-gray-700' : 'border-gray-200'
+					{/* Sidebar */}
+					<div className={`w-80 border-r p-6 overflow-y-auto ${
+						isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'
 					}`}>
 						{/* Filtros */}
-						<div className="p-4 space-y-4">
-							{/* Búsqueda */}
-							<div className="relative">
-								<Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${
-									isDarkMode ? 'text-gray-400' : 'text-gray-500'
-								}`} />
-								<input
-									type="text"
-									placeholder="Buscar productos..."
-									value={searchTerm}
-									onChange={(e) => setSearchTerm(e.target.value)}
-									className={`w-full pl-10 pr-4 py-2 rounded-lg border transition-colors ${
+						<div className="space-y-4">
+							<div>
+								<label className="block text-sm font-medium mb-2">Tipo de Producto</label>
+								<select
+									value={selectedType}
+									onChange={(e) => setSelectedType(e.target.value as any)}
+									className={`w-full p-3 rounded-lg border ${
 										isDarkMode 
-											? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-											: 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-									}`}
-								/>
-							</div>
-
-							{/* Filtro por categoría */}
-							<div className="flex flex-wrap gap-2">
-								<button
-									onClick={() => setSelectedCategory('all')}
-									className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-										selectedCategory === 'all'
-											? 'bg-green-500 text-white'
-											: isDarkMode
-												? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-												: 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+											? 'bg-gray-800 border-gray-600 text-white' 
+											: 'bg-white border-gray-300 text-gray-900'
 									}`}
 								>
-									Todos
-								</button>
-								{PRODUCT_CATEGORIES.map(category => (
-									<button
-										key={category.value}
-										onClick={() => setSelectedCategory(category.value)}
-										className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-											selectedCategory === category.value
-												? 'bg-green-500 text-white'
-												: isDarkMode
-													? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-													: 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-										}`}
-									>
-										{category.icon} {category.label}
-									</button>
-								))}
+									<option value="fertilizer">Fertilizantes</option>
+									<option value="water">Agua</option>
+									<option value="phytosanitary">Fitosanitarios</option>
+								</select>
 							</div>
+
+							<div>
+								<label className="block text-sm font-medium mb-2">Buscar</label>
+								<div className="relative">
+									<Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+										isDarkMode ? 'text-gray-400' : 'text-gray-500'
+									}`} />
+									<input
+										type="text"
+										placeholder="Buscar productos..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
+											isDarkMode 
+												? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+												: 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+										}`}
+									/>
+								</div>
+							</div>
+
+							<button
+								onClick={() => setShowForm(true)}
+								className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+							>
+								<Plus className="w-4 h-4" />
+								<span>Nuevo Item</span>
+							</button>
 						</div>
 
-						{/* Lista */}
-						<div className="flex-1 overflow-y-auto p-4">
+						{/* Lista de items */}
+						<div className="mt-6 space-y-2">
 							{isLoading ? (
-								<div className="flex items-center justify-center py-8">
-									<div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+								<div className="text-center py-4">
+									<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
 								</div>
-							) : filteredProducts.length === 0 ? (
-								<div className="text-center py-8">
-									<Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-									<h3 className={`text-lg font-medium mb-2 ${
-										isDarkMode ? 'text-gray-300' : 'text-gray-900'
-									}`}>
-										No hay productos
-									</h3>
-									<p className={`text-sm ${
-										isDarkMode ? 'text-gray-400' : 'text-gray-500'
-									}`}>
-										Comienza añadiendo tu primer producto al inventario
-									</p>
+							) : filteredItems.length === 0 ? (
+								<div className={`text-center py-8 ${
+									isDarkMode ? 'text-gray-400' : 'text-gray-500'
+								}`}>
+									<Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+									<p>No hay items en inventario</p>
 								</div>
 							) : (
-								<div className="space-y-3">
-									{filteredProducts.map(product => (
+								filteredItems.map((item) => {
+									const stockStatus = getStockStatus(item)
+									const StatusIcon = stockStatus.icon
+									
+									return (
 										<div
-											key={product._id}
-											className={`p-4 rounded-lg border transition-colors ${
+											key={item._id}
+											className={`p-4 rounded-lg border cursor-pointer transition-colors ${
 												isDarkMode 
-													? 'bg-gray-700 border-gray-600 hover:bg-gray-600' 
-													: 'bg-white border-gray-200 hover:bg-gray-50'
-											} ${isLowStock(product) ? 'border-red-300 bg-red-50 dark:bg-red-900/20' : ''}`}
+													? 'border-gray-700 hover:bg-gray-800' 
+													: 'border-gray-200 hover:bg-gray-50'
+											}`}
+											onClick={() => handleEdit(item)}
 										>
 											<div className="flex items-center justify-between">
-												<div className="flex items-center space-x-3 flex-1">
-													<div className="text-2xl">
-														{getCategoryIcon(product.category)}
+												<div className="flex-1">
+													<div className="flex items-center space-x-2">
+														<StatusIcon className={`w-4 h-4 ${stockStatus.color}`} />
+														<h3 className="font-medium">{item.productName}</h3>
 													</div>
-													<div className="flex-1 min-w-0">
-														<div className="flex items-center space-x-2">
-															<h3 className={`font-medium ${
-																isDarkMode ? 'text-white' : 'text-gray-900'
-															}`}>
-																{product.name}
-															</h3>
-															{isLowStock(product) && (
-																<AlertTriangle className="h-4 w-4 text-red-500" />
-															)}
-														</div>
-														<p className={`text-sm ${
-															isDarkMode ? 'text-gray-300' : 'text-gray-500'
+													<p className={`text-sm ${
+														isDarkMode ? 'text-gray-400' : 'text-gray-600'
+													}`}>
+														{item.currentStock} {item.unit}
+													</p>
+													<div className="flex items-center space-x-2 mt-1">
+														<MapPin className="w-3 h-3 text-gray-400" />
+														<span className={`text-xs ${
+															isDarkMode ? 'text-gray-400' : 'text-gray-500'
 														}`}>
-															{getCategoryLabel(product.category)}
-														</p>
-														<div className="flex items-center space-x-4 mt-1">
-															<span className={`text-sm font-medium ${
-																isLowStock(product) ? 'text-red-600' : 'text-green-600'
-															}`}>
-																{product.quantity} {product.unit}
-															</span>
-															<span className={`text-sm ${
+															{item.location}
+														</span>
+													</div>
+													{item.expiryDate && (
+														<div className="flex items-center space-x-2 mt-1">
+															<Clock className="w-3 h-3 text-gray-400" />
+															<span className={`text-xs ${
 																isDarkMode ? 'text-gray-400' : 'text-gray-500'
 															}`}>
-																€{product.price.toFixed(2)}
+																Caduca: {item.expiryDate}
 															</span>
 														</div>
-													</div>
+													)}
 												</div>
-												<div className="flex items-center space-x-2">
+												<div className="flex space-x-2">
 													<button
-														onClick={() => handleEdit(product)}
-														className={`p-2 rounded-lg transition-colors ${
-															isDarkMode 
-																? 'hover:bg-gray-600 text-gray-400 hover:text-blue-400' 
-																: 'hover:bg-gray-200 text-gray-500 hover:text-blue-600'
+														onClick={(e) => {
+															e.stopPropagation()
+															handleEdit(item)
+														}}
+														className={`p-2 rounded hover:bg-opacity-80 ${
+															isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
 														}`}
-														title="Editar"
 													>
-														<Edit3 className="h-4 w-4" />
+														<Edit className="w-4 h-4" />
 													</button>
 													<button
-														onClick={() => product._id && handleDelete(product._id)}
-														className={`p-2 rounded-lg transition-colors ${
-															isDarkMode 
-																? 'hover:bg-gray-600 text-gray-400 hover:text-red-400' 
-																: 'hover:bg-gray-200 text-gray-500 hover:text-red-600'
-														}`}
-														title="Eliminar"
+														onClick={(e) => {
+															e.stopPropagation()
+															handleDelete(item._id)
+														}}
+														className="p-2 rounded hover:bg-red-100 text-red-500"
 													>
-														<Trash2 className="h-4 w-4" />
+														<Trash2 className="w-4 h-4" />
 													</button>
 												</div>
 											</div>
 										</div>
-									))}
-								</div>
+									)
+								})
 							)}
 						</div>
 					</div>
 
-					{/* Formulario */}
-					{showForm && (
-						<div className="w-96 p-6">
-							<div className="flex items-center justify-between mb-6">
-								<h3 className="text-lg font-semibold">
-									{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+					{/* Contenido principal */}
+					<div className="flex-1 flex flex-col">
+						{/* Alertas */}
+						{alerts.length > 0 && (
+							<div className={`p-4 border-b ${
+								isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-yellow-50'
+							}`}>
+								<h3 className="font-semibold mb-3 flex items-center space-x-2">
+									<AlertTriangle className="w-5 h-5 text-yellow-500" />
+									<span>Alertas de Inventario</span>
 								</h3>
-								<button
-									onClick={resetForm}
-									className={`p-2 rounded-lg transition-colors ${
-										isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-									}`}
-								>
-									<X className="h-4 w-4" />
-								</button>
+								<div className="space-y-2">
+									{alerts.map((alert) => (
+										<div
+											key={alert._id}
+											className={`p-3 rounded-lg border ${
+												alert.severity === 'critical'
+													? 'border-red-200 bg-red-50'
+													: 'border-yellow-200 bg-yellow-50'
+											} ${isDarkMode ? 'text-gray-900' : ''}`}
+										>
+											<div className="flex items-center justify-between">
+												<div className="flex-1">
+													<p className="font-medium">{alert.productName}</p>
+													<p className="text-sm text-gray-600">{alert.message}</p>
+												</div>
+												<button
+													onClick={() => handleMarkAlertAsRead(alert._id)}
+													className="text-xs text-blue-500 hover:text-blue-700"
+												>
+													Marcar como leída
+												</button>
+											</div>
+										</div>
+									))}
+								</div>
 							</div>
+						)}
 
-							<form onSubmit={handleSubmit} className="space-y-4">
-								{/* Nombre */}
-								<div>
-									<label className={`block text-sm font-medium mb-2 ${
-										isDarkMode ? 'text-gray-300' : 'text-gray-700'
-									}`}>
-										Nombre del producto *
-									</label>
-									<input
-										type="text"
-										required
-										value={formData.name}
-										onChange={(e) => setFormData({...formData, name: e.target.value})}
-										className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-											isDarkMode 
-												? 'bg-gray-700 border-gray-600 text-white' 
-												: 'bg-white border-gray-300 text-gray-900'
-										}`}
-									/>
-								</div>
-
-								{/* Categoría */}
-								<div>
-									<label className={`block text-sm font-medium mb-2 ${
-										isDarkMode ? 'text-gray-300' : 'text-gray-700'
-									}`}>
-										Categoría *
-									</label>
-									<select
-										value={formData.category}
-										onChange={(e) => setFormData({...formData, category: e.target.value as ProductCategory})}
-										className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-											isDarkMode 
-												? 'bg-gray-700 border-gray-600 text-white' 
-												: 'bg-white border-gray-300 text-gray-900'
-										}`}
-									>
-										{PRODUCT_CATEGORIES.map(category => (
-											<option key={category.value} value={category.value}>
-												{category.icon} {category.label}
-											</option>
-										))}
-									</select>
-								</div>
-
-								{/* Descripción */}
-								<div>
-									<label className={`block text-sm font-medium mb-2 ${
-										isDarkMode ? 'text-gray-300' : 'text-gray-700'
-									}`}>
-										Descripción
-									</label>
-									<textarea
-										value={formData.description}
-										onChange={(e) => setFormData({...formData, description: e.target.value})}
-										rows={3}
-										className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-											isDarkMode 
-												? 'bg-gray-700 border-gray-600 text-white' 
-												: 'bg-white border-gray-300 text-gray-900'
-										}`}
-									/>
-								</div>
-
-								{/* Cantidad y Unidad */}
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Cantidad *
-										</label>
-										<input
-											type="number"
-											required
-											min="0"
-											step="0.01"
-											value={formData.quantity}
-											onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value) || 0})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-										/>
-									</div>
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Unidad *
-										</label>
-										<select
-											value={formData.unit}
-											onChange={(e) => setFormData({...formData, unit: e.target.value})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
+						{/* Formulario o vista previa */}
+						{showForm ? (
+							<div className="flex-1 p-6 overflow-y-auto">
+								<div className="max-w-2xl mx-auto">
+									<div className="flex items-center justify-between mb-6">
+										<h3 className="text-lg font-semibold">
+											{editingItem ? 'Editar Item de Inventario' : 'Nuevo Item de Inventario'}
+										</h3>
+										<button
+											onClick={handleCloseForm}
+											className={`p-2 rounded-lg hover:bg-opacity-80 ${
+												isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
 											}`}
 										>
-											{UNITS.map(unit => (
-												<option key={unit} value={unit}>{unit}</option>
-											))}
-										</select>
+											<X className="w-5 h-5" />
+										</button>
 									</div>
-								</div>
 
-								{/* Stock mínimo y Precio */}
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Stock mínimo *
-										</label>
-										<input
-											type="number"
-											required
-											min="0"
-											step="0.01"
-											value={formData.minStock}
-											onChange={(e) => setFormData({...formData, minStock: parseFloat(e.target.value) || 0})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-										/>
-									</div>
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Precio (€) *
-										</label>
-										<input
-											type="number"
-											required
-											min="0"
-											step="0.01"
-											value={formData.price}
-											onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-										/>
-									</div>
-								</div>
+									<form onSubmit={handleSubmit} className="space-y-6">
+										<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Nombre del Producto *
+												</label>
+												<input
+													type="text"
+													name="productName"
+													value={formData.productName}
+													onChange={handleInputChange}
+													required
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
 
-								{/* Proveedor y Ubicación */}
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Proveedor
-										</label>
-										<input
-											type="text"
-											value={formData.supplier}
-											onChange={(e) => setFormData({...formData, supplier: e.target.value})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-										/>
-									</div>
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Ubicación
-										</label>
-										<input
-											type="text"
-											value={formData.location}
-											onChange={(e) => setFormData({...formData, location: e.target.value})}
-											className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-										/>
-									</div>
-								</div>
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Tipo de Producto *
+												</label>
+												<select
+													name="productType"
+													value={formData.productType}
+													onChange={handleInputChange}
+													required
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												>
+													<option value="fertilizer">Fertilizante</option>
+													<option value="water">Agua</option>
+													<option value="phytosanitary">Fitosanitario</option>
+												</select>
+											</div>
 
-								{/* Notas */}
-								<div>
-									<label className={`block text-sm font-medium mb-2 ${
-										isDarkMode ? 'text-gray-300' : 'text-gray-700'
-									}`}>
-										Notas
-									</label>
-									<textarea
-										value={formData.notes}
-										onChange={(e) => setFormData({...formData, notes: e.target.value})}
-										rows={2}
-										className={`w-full px-3 py-2 rounded-lg border transition-colors ${
-											isDarkMode 
-												? 'bg-gray-700 border-gray-600 text-white' 
-												: 'bg-white border-gray-300 text-gray-900'
-										}`}
-									/>
-								</div>
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Stock Actual *
+												</label>
+												<input
+													type="number"
+													name="currentStock"
+													value={formData.currentStock}
+													onChange={handleInputChange}
+													step="0.01"
+													min="0"
+													required
+													onFocus={(e) => {
+														if (e.target.value === '0') {
+															e.target.value = ''
+														}
+													}}
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
 
-								{/* Botones */}
-								<div className="flex items-center space-x-3 pt-4">
-									<button
-										type="submit"
-										disabled={isLoading}
-										className={`flex items-center space-x-2 px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium`}
-									>
-										<Save className="h-4 w-4" />
-										<span>{isLoading ? 'Guardando...' : 'Guardar'}</span>
-									</button>
-									<button
-										type="button"
-										onClick={resetForm}
-										className={`px-4 py-2 border rounded-lg transition-colors text-sm font-medium ${
-											isDarkMode 
-												? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-												: 'border-gray-300 text-gray-600 hover:bg-gray-50'
-										}`}
-									>
-										Cancelar
-									</button>
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Stock Mínimo *
+												</label>
+												<input
+													type="number"
+													name="minStock"
+													value={formData.minStock}
+													onChange={handleInputChange}
+													step="0.01"
+													min="0"
+													required
+													onFocus={(e) => {
+														if (e.target.value === '0') {
+															e.target.value = ''
+														}
+													}}
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
+
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Stock Crítico *
+												</label>
+												<input
+													type="number"
+													name="criticalStock"
+													value={formData.criticalStock}
+													onChange={handleInputChange}
+													step="0.01"
+													min="0"
+													required
+													onFocus={(e) => {
+														if (e.target.value === '0') {
+															e.target.value = ''
+														}
+													}}
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
+
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Unidad *
+												</label>
+												<input
+													type="text"
+													name="unit"
+													value={formData.unit}
+													onChange={handleInputChange}
+													placeholder="kg, L, m³, etc."
+													required
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
+
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Ubicación *
+												</label>
+												<input
+													type="text"
+													name="location"
+													value={formData.location}
+													onChange={handleInputChange}
+													placeholder="Almacén, Estante, etc."
+													required
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
+
+											<div>
+												<label className="block text-sm font-medium mb-2">
+													Fecha de Caducidad
+												</label>
+												<input
+													type="date"
+													name="expiryDate"
+													value={formData.expiryDate}
+													onChange={handleInputChange}
+													className={`w-full p-3 rounded-lg border ${
+														isDarkMode 
+															? 'bg-gray-800 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												/>
+											</div>
+										</div>
+
+										<div className="flex justify-end space-x-4 pt-6">
+											<button
+												type="button"
+												onClick={handleCloseForm}
+												className={`px-6 py-3 rounded-lg border ${
+													isDarkMode 
+														? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+														: 'border-gray-300 text-gray-700 hover:bg-gray-50'
+												}`}
+											>
+												Cancelar
+											</button>
+											<button
+												type="submit"
+												disabled={isLoading}
+												className="bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg flex items-center space-x-2"
+											>
+												{isLoading ? (
+													<>
+														<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+														<span>Guardando...</span>
+													</>
+												) : (
+													<>
+														<Plus className="w-4 h-4" />
+														<span>{editingItem ? 'Actualizar' : 'Crear'} Item</span>
+													</>
+												)}
+											</button>
+										</div>
+									</form>
 								</div>
-							</form>
-						</div>
-					)}
+							</div>
+						) : (
+							<div className="flex-1 p-6 flex items-center justify-center">
+								<div className={`text-center ${
+									isDarkMode ? 'text-gray-400' : 'text-gray-500'
+								}`}>
+									<Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
+									<p className="text-lg font-medium mb-2">Gestión de Inventario</p>
+									<p>Selecciona un item para editar o crea uno nuevo</p>
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

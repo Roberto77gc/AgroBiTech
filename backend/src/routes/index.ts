@@ -2,6 +2,9 @@ import express from 'express'
 import authRoutes from './auth'
 import dashboardRoutes from './dashboard'
 import inventoryRoutes from './inventory'
+import productRoutes from './products'
+import supplierRoutes from './suppliers'
+import purchaseRoutes from './purchases'
 
 const router = express.Router()
 
@@ -19,5 +22,8 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes)
 router.use('/dashboard', dashboardRoutes)
 router.use('/inventory', inventoryRoutes)
+router.use('/products', productRoutes)
+router.use('/suppliers', supplierRoutes)
+router.use('/purchases', purchaseRoutes)
 
 export default router

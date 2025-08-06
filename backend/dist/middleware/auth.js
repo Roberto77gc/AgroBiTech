@@ -12,8 +12,7 @@ const authMiddleware = async (req, res, next) => {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             res.status(401).json({
                 success: false,
-                message: 'Access denied. No token provided or invalid format.',
-                error: 'Authentication required'
+                message: 'Token no proporcionado o formato inválido'
             });
             return;
         }
@@ -21,26 +20,25 @@ const authMiddleware = async (req, res, next) => {
         if (!token) {
             res.status(401).json({
                 success: false,
-                message: 'Access denied. No token provided.',
-                error: 'Authentication required'
+                message: 'Token no proporcionado'
             });
             return;
         }
-        const jwtSecret = process.env.JWT_SECRET;
-        if (!jwtSecret) {
-            throw new Error('JWT_SECRET is not defined in environment variables');
-        }
+        const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
         const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
         const user = await User_1.default.findById(decoded.userId);
         if (!user) {
             res.status(401).json({
                 success: false,
-                message: 'Access denied. User not found.',
-                error: 'Invalid token'
+                message: 'Usuario no encontrado'
             });
             return;
         }
-        req.user = user;
+        req.user = {
+            userId: user._id.toString(),
+            email: user.email,
+            name: user.name
+        };
         next();
     }
     catch (error) {
@@ -48,23 +46,20 @@ const authMiddleware = async (req, res, next) => {
         if (error instanceof jsonwebtoken_1.default.JsonWebTokenError) {
             res.status(401).json({
                 success: false,
-                message: 'Access denied. Invalid token.',
-                error: 'Token verification failed'
+                message: 'Token inválido'
             });
             return;
         }
         if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
             res.status(401).json({
                 success: false,
-                message: 'Access denied. Token expired.',
-                error: 'Token has expired'
+                message: 'Token expirado'
             });
             return;
         }
         res.status(500).json({
             success: false,
-            message: 'Internal server error during authentication.',
-            error: 'Authentication failed'
+            message: 'Error interno del servidor durante autenticación'
         });
     }
 };
@@ -79,14 +74,15 @@ const optionalAuthMiddleware = async (req, _res, next) => {
         if (!token) {
             return next();
         }
-        const jwtSecret = process.env.JWT_SECRET;
-        if (!jwtSecret) {
-            return next();
-        }
+        const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
         const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
         const user = await User_1.default.findById(decoded.userId);
         if (user) {
-            req.user = user;
+            req.user = {
+                userId: user._id.toString(),
+                email: user.email,
+                name: user.name
+            };
         }
         next();
     }

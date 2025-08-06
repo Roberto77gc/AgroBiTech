@@ -12,8 +12,8 @@ import {
 	Plus,
 	Info
 } from 'lucide-react'
-import type { FertigationData, PhytosanitaryData, WaterData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority } from '../types'
-import { getProductsByType, getAllSuppliers, getPurchasesByProduct, getProductById, type ProductPrice, type Supplier } from '../data/productPrices'
+import type { FertigationData, PhytosanitaryData, WaterData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority, ProductPrice, Supplier, ProductPurchase } from '../types'
+import { productAPI, supplierAPI, purchaseAPI, inventoryAPI } from '../services/api'
 
 interface ActivityFormModalProps {
 	isOpen: boolean
@@ -82,7 +82,11 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 		notes: '',
 		status: 'planning' as ActivityStatus,
 		priority: 'medium' as ActivityPriority,
-		totalCost: 0
+		totalCost: 0,
+		
+		// Campos de agrupación (opcionales)
+		cycleId: '',
+		dayNumber: 0
 	})
 
 	const [isSubmitting, setIsSubmitting] = useState(false)
@@ -90,7 +94,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 	const [availableSuppliers, setAvailableSuppliers] = useState<Supplier[]>([])
 
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
-    const validateForm = () => {
+    const validateForm = async () => {
 		const newErrors: { [key: string]: string } = {}
 
 		if (!formData.name.trim()) {
@@ -103,6 +107,57 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 			newErrors.totalCost = 'El coste total no puede ser negativo'
 		}
 
+		// Validar stock disponible en inventario
+		if (formData.fertigation.enabled) {
+			for (let recordIndex = 0; recordIndex < formData.fertigation.dailyRecords.length; recordIndex++) {
+				const record = formData.fertigation.dailyRecords[recordIndex]
+				for (let fertilizerIndex = 0; fertilizerIndex < record.fertilizers.length; fertilizerIndex++) {
+					const fertilizer = record.fertilizers[fertilizerIndex]
+					if (fertilizer.productId) {
+						try {
+							const inventoryItem = await inventoryAPI.getByProduct(fertilizer.productId)
+							if (inventoryItem) {
+								if (fertilizer.fertilizerAmount > inventoryItem.currentStock) {
+									newErrors[`fertigation_${recordIndex}_${fertilizerIndex}`] = 
+										`Stock insuficiente. Disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`
+								}
+							} else {
+								newErrors[`fertigation_${recordIndex}_${fertilizerIndex}`] = 
+									'Producto no disponible en inventario'
+							}
+						} catch (error) {
+							newErrors[`fertigation_${recordIndex}_${fertilizerIndex}`] = 
+								'Error verificando inventario'
+						}
+					}
+				}
+			}
+		}
+
+		// Validar stock de fitosanitarios
+		if (formData.phytosanitary.enabled && formData.phytosanitary.productName) {
+			const phytosanitaryProduct = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => 
+				p.name === formData.phytosanitary.productName && p.type === 'phytosanitary'
+			) : undefined
+			if (phytosanitaryProduct) {
+				try {
+					const inventoryItem = await inventoryAPI.getByProduct(phytosanitaryProduct._id)
+					const dosage = parseFloat(formData.phytosanitary.dosage || '1') || 1
+					
+					if (inventoryItem) {
+						if (dosage > inventoryItem.currentStock) {
+							newErrors.phytosanitary = 
+								`Stock insuficiente de ${phytosanitaryProduct.name}. Disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`
+						}
+					} else {
+						newErrors.phytosanitary = `Producto ${phytosanitaryProduct.name} no disponible en inventario`
+					}
+				} catch (error) {
+					newErrors.phytosanitary = `Error verificando inventario de ${phytosanitaryProduct.name}`
+				}
+			}
+		}
+
 		setErrors(newErrors)
 		return Object.keys(newErrors).length === 0
 	}
@@ -110,13 +165,88 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		
-		if (validateForm()) {
-			setIsSubmitting(true)
-			try {
-				await onSubmit(formData)
-			} finally {
-				setIsSubmitting(false)
+		if (!(await validateForm())) {
+			return
+		}
+		
+		setIsSubmitting(true)
+		
+		try {
+			// Calcular costos totales y consumir inventario
+			let totalCost = 0
+			const consumedProducts: Array<{productId: string, productName: string, amount: number, unit: string}> = []
+			
+			// Costos de fertigación y consumo de fertilizantes
+			if (formData.fertigation.enabled) {
+				for (const record of formData.fertigation.dailyRecords) {
+					for (const fertilizer of record.fertilizers) {
+						if (fertilizer.productId) {
+							const product = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => p._id === fertilizer.productId) : undefined
+							if (product) {
+								totalCost += (fertilizer.fertilizerAmount * product.pricePerUnit)
+								
+								// Consumir del inventario
+								try {
+									const inventoryItem = await inventoryAPI.getByProduct(fertilizer.productId)
+									if (inventoryItem) {
+										await inventoryAPI.adjustStock(fertilizer.productId, fertilizer.fertilizerAmount, 'subtract')
+										consumedProducts.push({
+											productId: fertilizer.productId,
+											productName: fertilizer.fertilizerType,
+											amount: fertilizer.fertilizerAmount,
+											unit: fertilizer.fertilizerUnit
+										})
+									}
+								} catch (error) {
+									console.error('Error ajustando inventario:', error)
+								}
+							}
+						}
+					}
+				}
 			}
+			
+			// Costos de fitosanitarios y consumo
+			if (formData.phytosanitary.enabled && formData.phytosanitary.productName) {
+				const phytosanitaryProduct = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => 
+					p.name === formData.phytosanitary.productName && p.type === 'phytosanitary'
+				) : undefined
+				if (phytosanitaryProduct) {
+					// Calcular dosis (simplificado - asumimos 1 unidad por aplicación)
+					const dosage = parseFloat(formData.phytosanitary.dosage || '1') || 1
+					totalCost += (phytosanitaryProduct.pricePerUnit * dosage)
+					
+					// Consumir del inventario
+					try {
+						const inventoryItem = await inventoryAPI.getByProduct(phytosanitaryProduct._id)
+						if (inventoryItem) {
+							await inventoryAPI.adjustStock(phytosanitaryProduct._id, dosage, 'subtract')
+							consumedProducts.push({
+								productId: phytosanitaryProduct._id,
+								productName: phytosanitaryProduct.name,
+								amount: dosage,
+								unit: phytosanitaryProduct.unit
+							})
+						}
+					} catch (error) {
+						console.error('Error ajustando inventario de fitosanitarios:', error)
+					}
+				}
+			}
+			
+			// Costos de agua y energía
+			totalCost += (formData.water.cost || 0) + (formData.energy.cost || 0)
+			
+			const activityData = {
+				...formData,
+				totalCost,
+				consumedProducts, // Añadir información de productos consumidos
+				createdAt: new Date().toISOString()
+			}
+			
+			await onSubmit(activityData)
+			
+			// Resetear formulario después del envío exitoso
 			setFormData({
 				// Información básica
 				name: '',
@@ -171,9 +301,17 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 				notes: '',
 				status: 'planning' as ActivityStatus,
 				priority: 'medium' as ActivityPriority,
-				totalCost: 0
+				totalCost: 0,
+				
+				// Campos de agrupación (opcionales)
+				cycleId: '',
+				dayNumber: 0
 			})
 			setErrors({})
+		} catch (error) {
+			console.error('Error submitting activity:', error)
+		} finally {
+			setIsSubmitting(false)
 		}
 	}
 
@@ -346,10 +484,26 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 
 	// Cargar productos disponibles al abrir el modal
 	useEffect(() => {
-		if (isOpen) {
-			setAvailableFertilizers(getProductsByType('fertilizer'))
-			setAvailableSuppliers(getAllSuppliers())
+		const loadData = async () => {
+			if (isOpen) {
+				try {
+					// Cargar fertilizantes desde la API
+					const fertilizers = await productAPI.getByType('fertilizer')
+					setAvailableFertilizers(Array.isArray(fertilizers) ? fertilizers : [])
+					
+					// Cargar proveedores desde la API
+					const suppliers = await supplierAPI.getAll()
+					setAvailableSuppliers(Array.isArray(suppliers) ? suppliers : [])
+				} catch (error) {
+					console.error('Error cargando datos:', error)
+					// En caso de error, establecer arrays vacíos
+					setAvailableFertilizers([])
+					setAvailableSuppliers([])
+				}
+			}
 		}
+		
+		loadData()
 	}, [isOpen])
 
 	// Función para manejar el focus en campos numéricos
@@ -360,27 +514,50 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 	}
 
 	// Función para calcular coste automáticamente cuando se selecciona un producto
-	const handleFertilizerTypeChange = (recordIndex: number, fertilizerIndex: number, value: string) => {
-		const product = getProductById(value)
+	const handleFertilizerTypeChange = async (recordIndex: number, fertilizerIndex: number, value: string) => {
+		const product = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => p._id === value) : undefined
 		const currentFertilizer = formData.fertigation.dailyRecords[recordIndex]?.fertilizers[fertilizerIndex]
 		
 		if (product && currentFertilizer) {
 			const newCost = currentFertilizer.fertilizerAmount * product.pricePerUnit
 			
 			updateFertilizer(recordIndex, fertilizerIndex, 'fertilizerType', product.name)
-			updateFertilizer(recordIndex, fertilizerIndex, 'productId', product.id)
+			updateFertilizer(recordIndex, fertilizerIndex, 'productId', product._id)
 			updateFertilizer(recordIndex, fertilizerIndex, 'pricePerUnit', product.pricePerUnit)
 			updateFertilizer(recordIndex, fertilizerIndex, 'cost', newCost)
 			
-			// Buscar información de la última compra de este producto
-			const lastPurchase = getPurchasesByProduct(product.id).sort((a, b) => 
-				new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
-			)[0]
+			try {
+				// Buscar información de la última compra de este producto
+				const purchases = await purchaseAPI.getByProduct(product._id)
+				const lastPurchase = purchases.sort((a: ProductPurchase, b: ProductPurchase) => 
+					new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+				)[0]
+				
+				if (lastPurchase) {
+					updateFertilizer(recordIndex, fertilizerIndex, 'brand', lastPurchase.brand)
+					updateFertilizer(recordIndex, fertilizerIndex, 'supplier', lastPurchase.supplier)
+					updateFertilizer(recordIndex, fertilizerIndex, 'purchaseDate', lastPurchase.purchaseDate)
+				}
+			} catch (error) {
+				console.error('Error cargando compras del producto:', error)
+			}
 			
-			if (lastPurchase) {
-				updateFertilizer(recordIndex, fertilizerIndex, 'brand', lastPurchase.brand)
-				updateFertilizer(recordIndex, fertilizerIndex, 'supplier', lastPurchase.supplier)
-				updateFertilizer(recordIndex, fertilizerIndex, 'purchaseDate', lastPurchase.purchaseDate)
+			// Verificar stock disponible en inventario
+			try {
+				const inventoryItem = await inventoryAPI.getByProduct(product._id)
+				if (inventoryItem) {
+					console.log(`✅ Stock disponible de ${product.name}: ${inventoryItem.currentStock} ${inventoryItem.unit}`)
+					if (inventoryItem.currentStock <= inventoryItem.minStock) {
+						console.warn(`⚠️ Stock bajo de ${product.name}: ${inventoryItem.currentStock} ${inventoryItem.unit}`)
+					}
+					if (inventoryItem.currentStock <= inventoryItem.criticalStock) {
+						console.error(`🚨 Stock crítico de ${product.name}: ${inventoryItem.currentStock} ${inventoryItem.unit}`)
+					}
+				} else {
+					console.warn(`⚠️ Producto ${product.name} no está en inventario`)
+				}
+			} catch (error) {
+				console.error('Error verificando inventario:', error)
 			}
 		} else {
 			updateFertilizer(recordIndex, fertilizerIndex, 'fertilizerType', value)
@@ -592,6 +769,55 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 								}`}
 								placeholder="Ej: ES123456789012"
 							/>
+						</div>
+						
+						{/* Campos de Agrupación */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label className={`block text-sm font-medium mb-2 ${
+									isDarkMode ? 'text-gray-300' : 'text-gray-700'
+								}`}>
+									ID del Ciclo (Opcional)
+								</label>
+								<input
+									type="text"
+									value={formData.cycleId}
+									onChange={(e) => handleInputChange('cycleId', e.target.value)}
+									className={`w-full px-3 py-2 border rounded-lg transition-colors ${
+										isDarkMode 
+											? 'bg-gray-700 border-gray-600 text-white' 
+											: 'bg-white border-gray-300 text-gray-900'
+									}`}
+									placeholder="Ej: calabazas-2024-01"
+								/>
+								<p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+									Para agrupar actividades del mismo ciclo
+								</p>
+							</div>
+							
+							<div>
+								<label className={`block text-sm font-medium mb-2 ${
+									isDarkMode ? 'text-gray-300' : 'text-gray-700'
+								}`}>
+									Número de Día (Opcional)
+								</label>
+								<input
+									type="number"
+									min="1"
+									value={formData.dayNumber}
+									onChange={(e) => handleInputChange('dayNumber', parseInt(e.target.value) || 0)}
+									onFocus={handleNumberFocus}
+									className={`w-full px-3 py-2 border rounded-lg transition-colors ${
+										isDarkMode 
+											? 'bg-gray-700 border-gray-600 text-white' 
+											: 'bg-white border-gray-300 text-gray-900'
+									}`}
+									placeholder="1, 2, 3..."
+								/>
+								<p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+									Día del ciclo (1, 2, 3...)
+								</p>
+							</div>
 						</div>
 					</div>
                     					{/* DOCUMENTACIÓN */}
@@ -811,8 +1037,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																			}`}
 																		>
 																			<option value="">Seleccionar fertilizante...</option>
-																			{availableFertilizers.map((product) => (
-																				<option key={product.id} value={product.id}>
+																			{Array.isArray(availableFertilizers) && availableFertilizers.map((product) => (
+																				<option key={product._id} value={product._id}>
 																					{product.name} - {product.pricePerUnit}€/{product.unit}
 																				</option>
 																			))}
@@ -922,8 +1148,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																						}`}
 																					>
 																						<option value="">Seleccionar proveedor...</option>
-																						{availableSuppliers.map((supplier) => (
-																							<option key={supplier.id} value={supplier.name}>
+																						{Array.isArray(availableSuppliers) && availableSuppliers.map((supplier) => (
+																							<option key={supplier._id} value={supplier.name}>
 																								{supplier.name}
 																							</option>
 																						))}

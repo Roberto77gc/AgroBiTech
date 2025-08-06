@@ -8,6 +8,9 @@ import { DatabaseConnection } from './config/database';
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import inventoryRoutes from './routes/inventory';
+import productRoutes from './routes/products';
+import supplierRoutes from './routes/suppliers';
+import purchaseRoutes from './routes/purchases';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -75,6 +78,9 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 // Legacy routes for compatibility
 app.use('/', authRoutes);

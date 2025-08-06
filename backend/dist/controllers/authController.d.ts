@@ -1,7 +1,18 @@
 import { Request, Response } from 'express';
-import { AuthResponse, LoginCredentials, RegisterCredentials, AuthRequest } from '../types';
-export declare const register: (req: Request<{}, AuthResponse, RegisterCredentials>, res: Response<AuthResponse>) => Promise<void>;
-export declare const login: (req: Request<{}, AuthResponse, LoginCredentials>, res: Response<AuthResponse>) => Promise<void>;
-export declare const getProfile: (req: AuthRequest, res: Response<AuthResponse>) => Promise<void>;
-export declare const validateToken: (req: AuthRequest, res: Response<AuthResponse>) => Promise<void>;
+interface AuthenticatedRequest extends Request {
+    user?: {
+        userId: string;
+        email: string;
+        name: string;
+    };
+}
+export declare const register: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const login: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const getProfile: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const updateProfile: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const changePassword: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const deleteAccount: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const checkUsers: (_req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const resetPassword: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export {};
 //# sourceMappingURL=authController.d.ts.map

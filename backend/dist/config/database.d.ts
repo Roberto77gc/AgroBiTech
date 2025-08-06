@@ -1,4 +1,4 @@
-declare class DatabaseConnection {
+export declare class DatabaseConnection {
     private static instance;
     private isConnected;
     private constructor();
@@ -7,6 +7,4 @@ declare class DatabaseConnection {
     disconnect(): Promise<void>;
     getConnectionStatus(): boolean;
 }
-export declare const database: DatabaseConnection;
-export {};
 //# sourceMappingURL=database.d.ts.map

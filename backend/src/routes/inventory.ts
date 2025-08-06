@@ -1,35 +1,47 @@
 import express from 'express'
 import { authMiddleware } from '../middleware/auth'
 import {
-	getUserInventory,
-	addProduct,
-	updateProduct,
-	deleteProduct,
-	getLowStockProducts,
-	getInventoryStats
+	getInventoryItems,
+	getInventoryItemById,
+	getInventoryItemByProduct,
+	createInventoryItem,
+	updateInventoryItem,
+	deleteInventoryItem,
+	adjustStock,
+	getAlerts,
+	markAlertAsRead
 } from '../controllers/inventoryController'
 
 const router = express.Router()
 
-// Aplicar middleware de autenticación a todas las rutas
+// Todas las rutas requieren autenticación
 router.use(authMiddleware)
 
-// Obtener inventario del usuario
-router.get('/', getUserInventory)
+// Obtener todos los items de inventario
+router.get('/', getInventoryItems)
 
-// Obtener estadísticas del inventario
-router.get('/stats', getInventoryStats)
+// Obtener alertas activas (DEBE IR ANTES que /:id)
+router.get('/alerts', getAlerts)
 
-// Obtener productos con stock bajo
-router.get('/low-stock', getLowStockProducts)
+// Marcar alerta como leída (DEBE IR ANTES que /:id)
+router.post('/alerts/:alertId/read', markAlertAsRead)
 
-// Añadir nuevo producto
-router.post('/', addProduct)
+// Obtener item de inventario por producto (DEBE IR ANTES que /:id)
+router.get('/product/:productId', getInventoryItemByProduct)
 
-// Actualizar producto
-router.put('/:id', updateProduct)
+// Obtener item de inventario por ID
+router.get('/:id', getInventoryItemById)
 
-// Eliminar producto
-router.delete('/:id', deleteProduct)
+// Crear nuevo item de inventario
+router.post('/', createInventoryItem)
+
+// Actualizar item de inventario
+router.put('/:id', updateInventoryItem)
+
+// Eliminar item de inventario
+router.delete('/:id', deleteInventoryItem)
+
+// Ajustar stock
+router.post('/:id/adjust', adjustStock)
 
 export default router 

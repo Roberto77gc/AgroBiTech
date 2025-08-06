@@ -40,6 +40,93 @@ export interface CategoryStats {
 	value: number
 }
 
+// Tipos para productos y precios
+export interface ProductPrice {
+	_id: string
+	userId: string
+	name: string
+	type: 'fertilizer' | 'water' | 'phytosanitary'
+	pricePerUnit: number
+	price?: number // Alias para pricePerUnit
+	unit: string
+	category?: string
+	description?: string
+	brand?: string
+	supplier?: string
+	purchaseDate?: string
+	active: boolean
+	createdAt: Date
+	updatedAt: Date
+}
+
+// Tipos para proveedores
+export interface Supplier {
+	_id: string
+	userId: string
+	name: string
+	contactPerson?: string
+	phone?: string
+	email?: string
+	address?: string
+	website?: string
+	rating?: number
+	notes?: string
+	active: boolean
+	createdAt: Date
+	updatedAt: Date
+}
+
+// Tipos para compras
+export interface ProductPurchase {
+	_id: string
+	userId: string
+	productId: string
+	productName: string
+	brand: string
+	supplier: string
+	purchaseDate: string
+	pricePerUnit: number
+	quantity: number
+	totalCost: number
+	unit: string
+	notes?: string
+	createdAt: Date
+	updatedAt: Date
+}
+
+// Tipos para inventario
+export interface InventoryItem {
+	_id: string
+	userId: string
+	productId: string
+	productName: string
+	productType: 'fertilizer' | 'water' | 'phytosanitary'
+	currentStock: number
+	minStock: number
+	criticalStock: number
+	unit: string
+	location: string
+	expiryDate?: string
+	lastUpdated: Date
+	active: boolean
+	createdAt: Date
+	updatedAt: Date
+}
+
+// Tipos para alertas de inventario
+export interface InventoryAlert {
+	_id: string
+	userId: string
+	itemId: string
+	productName: string
+	type: 'low_stock' | 'critical_stock' | 'expiry_warning'
+	message: string
+	severity: 'warning' | 'critical'
+	read: boolean
+	createdAt: Date
+	updatedAt: Date
+}
+
 // Tipos para actividades agrícolas profesionales
 export interface Activity {
 	_id: string
@@ -71,9 +158,21 @@ export interface Activity {
 	priority?: ActivityPriority
 	totalCost: number
 	
+	// Productos consumidos del inventario
+	consumedProducts?: Array<{
+		productId: string
+		productName: string
+		amount: number
+		unit: string
+	}>
+	
 	// Metadatos
 	createdAt: Date
 	updatedAt: Date
+	
+	// Campos de agrupación (opcionales)
+	cycleId?: string // Para agrupar actividades del mismo ciclo
+	dayNumber?: number // Número del día en el ciclo (1, 2, 3...)
 }
 
 export type CropType = string
@@ -87,6 +186,8 @@ export interface FertilizerRecord {
 	fertilizerUnit: string
 	cost: number
 	productId?: string // ID del producto de la base de datos
+	price?: number // Precio por unidad
+	unit?: string // Unidad del producto
 	pricePerUnit?: number // Precio por unidad para mostrar en resumen
 	brand?: string // Marca del producto
 	supplier?: string // Proveedor del producto
@@ -148,7 +249,6 @@ export type ActivityType =
 	| 'venta'
 	| 'otro'
 
-// Tipos para el dashboard mejorado
 export interface DashboardStats {
 	totalExpenses: number
 	monthlyExpenses: number
@@ -167,7 +267,7 @@ export interface CategoryExpense {
 	percentage: number
 }
 
-// Tipos para el clima
+// Tipos para datos meteorológicos
 export interface WeatherData {
 	temperature: number
 	humidity: number

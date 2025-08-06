@@ -1,5 +1,13 @@
-import mongoose from 'mongoose';
-import { IUser } from '../types';
+import mongoose, { Document } from 'mongoose';
+interface IUser extends Document {
+    _id: string;
+    email: string;
+    name: string;
+    password: string;
+    createdAt: Date;
+    updatedAt: Date;
+    comparePassword(candidatePassword: string): Promise<boolean>;
+}
 declare const User: mongoose.Model<IUser, {}, {}, {}, mongoose.Document<unknown, {}, IUser, {}> & IUser & Required<{
     _id: string;
 }> & {

@@ -26,14 +26,14 @@ export const register = async (req: Request, res: Response) => {
 
 		// Verificar si el usuario ya existe
 		const existingUser = await User.findOne({ email })
-		if (existingUser) {
+    if (existingUser) {
 			return res.status(400).json({ message: 'El usuario ya existe' })
 		}
 
 		// Crear nuevo usuario
-		const user = new User({
+    const user = new User({
 			name,
-			email,
+      email,
 			password
 		})
 
@@ -47,16 +47,16 @@ export const register = async (req: Request, res: Response) => {
 		)
 
 		return res.status(201).json({
-			success: true,
-			message: 'Usuario registrado exitosamente',
-			token,
+      success: true,
+      message: 'Usuario registrado exitosamente',
+      token,
 			user: {
 				id: user._id,
 				name: user.name,
 				email: user.email
 			}
 		})
-	} catch (error) {
+  } catch (error) {
 		console.error('Error in register:', error)
 		return res.status(500).json({ message: 'Error interno del servidor' })
 	}
@@ -73,13 +73,13 @@ export const login = async (req: Request, res: Response) => {
 
 		// Buscar usuario
 		const user = await User.findOne({ email }).select('+password')
-		if (!user) {
+    if (!user) {
 			return res.status(401).json({ message: 'Credenciales inválidas' })
 		}
 
 		// Verificar contraseña
 		const isPasswordValid = await user.comparePassword(password)
-		if (!isPasswordValid) {
+    if (!isPasswordValid) {
 			return res.status(401).json({ message: 'Credenciales inválidas' })
 		}
 
@@ -91,9 +91,9 @@ export const login = async (req: Request, res: Response) => {
 		)
 
 		return res.json({
-			success: true,
+      success: true,
 			message: 'Login exitoso',
-			token,
+      token,
 			user: {
 				id: user._id,
 				name: user.name,
@@ -126,7 +126,7 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
 				email: user.email
 			}
 		})
-	} catch (error) {
+  } catch (error) {
 		console.error('Error getting profile:', error)
 		return res.status(500).json({ message: 'Error interno del servidor' })
 	}
@@ -157,13 +157,13 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 			{ name, email },
 			{ new: true }
 		).select('-password')
-
-		if (!user) {
+    
+    if (!user) {
 			return res.status(404).json({ message: 'Usuario no encontrado' })
 		}
 
 		return res.json({
-			success: true,
+      success: true,
 			message: 'Perfil actualizado exitosamente',
 			user: {
 				id: user._id,
@@ -215,7 +215,7 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response) =
 			success: true,
 			message: 'Contraseña cambiada exitosamente'
 		})
-	} catch (error) {
+  } catch (error) {
 		console.error('Error changing password:', error)
 		return res.status(500).json({ message: 'Error interno del servidor' })
 	}
@@ -237,7 +237,7 @@ export const deleteAccount = async (req: AuthenticatedRequest, res: Response) =>
 
 		// Buscar usuario con contraseña
 		const user = await User.findById(userId).select('+password')
-		if (!user) {
+    if (!user) {
 			return res.status(404).json({ message: 'Usuario no encontrado' })
 		}
 
@@ -265,7 +265,7 @@ export const checkUsers = async (_req: Request, res: Response) => {
 	try {
 		const users = await User.find({}, { password: 0 }) // Excluir contraseñas
 		return res.json({
-			success: true,
+      success: true,
 			users: users.map(user => ({
 				id: user._id,
 				name: user.name,
@@ -304,7 +304,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 			success: true,
 			message: 'Contraseña reseteada exitosamente'
 		})
-	} catch (error) {
+  } catch (error) {
 		console.error('Error in resetPassword:', error)
 		return res.status(500).json({ message: 'Error interno del servidor' })
 	}

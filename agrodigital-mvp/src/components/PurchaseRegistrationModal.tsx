@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Edit, Trash2, ShoppingCart, Search, Calendar, DollarSign, Package } from 'lucide-react'
-import { 
-	getAllActiveProducts, 
-	getAllSuppliers, 
-	getAllPurchases, 
-	addPurchase, 
-	updatePurchase, 
-	deletePurchase, 
-	type ProductPurchase,
-	type ProductPrice,
-	type Supplier 
-} from '../data/productPrices'
+import type { ProductPurchase, ProductPrice, Supplier } from '../types'
+import { productAPI, supplierAPI, purchaseAPI } from '../services/api'
+import { toast } from 'react-toastify'
 
 interface PurchaseRegistrationModalProps {
 	isOpen: boolean
@@ -31,6 +23,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	const [selectedProductType, setSelectedProductType] = useState<'all' | 'fertilizer' | 'water'>('all')
 	const [showAddForm, setShowAddForm] = useState(false)
 	const [editingPurchase, setEditingPurchase] = useState<ProductPurchase | null>(null)
+	const [isLoading, setIsLoading] = useState(false)
 	
 	const [formData, setFormData] = useState({
 		productId: '',
@@ -65,14 +58,32 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		}
 	}, [formData.pricePerUnit, formData.quantity])
 
-	const loadData = () => {
-		const allProducts = getAllActiveProducts()
-		const allSuppliers = getAllSuppliers()
-		const allPurchases = getAllPurchases()
-		
-		setProducts(allProducts)
-		setSuppliers(allSuppliers)
-		setPurchases(allPurchases)
+	const loadData = async () => {
+		try {
+			setIsLoading(true)
+			const [productsResponse, suppliersResponse, purchasesResponse] = await Promise.all([
+				productAPI.getAll(),
+				supplierAPI.getAll(),
+				purchaseAPI.getAll()
+			])
+			
+			if (productsResponse.success) {
+				setProducts(productsResponse.products)
+			}
+			
+			if (suppliersResponse.success) {
+				setSuppliers(suppliersResponse.suppliers)
+			}
+			
+			if (purchasesResponse.success) {
+				setPurchases(purchasesResponse.purchases)
+			}
+		} catch (error) {
+			console.error('Error loading data:', error)
+			toast.error('Error al cargar datos')
+		} finally {
+			setIsLoading(false)
+		}
 	}
 
 	const filterPurchases = () => {
@@ -81,7 +92,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		// Filtrar por tipo de producto
 		if (selectedProductType !== 'all') {
 			filtered = filtered.filter(purchase => {
-				const product = products.find(p => p.id === purchase.productId)
+				const product = products.find(p => p._id === purchase.productId)
 				return product?.type === selectedProductType
 			})
 		}
@@ -99,11 +110,11 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	}
 
 	const handleProductChange = (productId: string) => {
-		const product = products.find(p => p.id === productId)
+		const product = products.find(p => p._id === productId)
 		if (product) {
 			setFormData({
 				...formData,
-				productId: product.id,
+				productId: product._id,
 				productName: product.name,
 				unit: product.unit,
 				pricePerUnit: product.pricePerUnit
@@ -111,15 +122,27 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		}
 	}
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		
 		if (editingPurchase) {
 			// Actualizar compra existente
-			updatePurchase(editingPurchase.id, formData)
+			try {
+				await purchaseAPI.update(editingPurchase._id, formData)
+				toast.success('Compra actualizada exitosamente')
+			} catch (error) {
+				console.error('Error updating purchase:', error)
+				toast.error('Error al actualizar la compra')
+			}
 		} else {
 			// Añadir nueva compra
-			addPurchase(formData)
+			try {
+				await purchaseAPI.create(formData)
+				toast.success('Compra registrada exitosamente')
+			} catch (error) {
+				console.error('Error adding purchase:', error)
+				toast.error('Error al registrar la compra')
+			}
 		}
 		
 		// Limpiar formulario
@@ -144,7 +167,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	const handleEdit = (purchase: ProductPurchase) => {
 		setEditingPurchase(purchase)
 		setFormData({
-			productId: purchase.productId,
+			productId: purchase._id,
 			productName: purchase.productName,
 			brand: purchase.brand,
 			supplier: purchase.supplier,
@@ -158,10 +181,16 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		setShowAddForm(true)
 	}
 
-	const handleDelete = (purchaseId: string) => {
+	const handleDelete = async (purchaseId: string) => {
 		if (window.confirm('¿Estás seguro de que quieres eliminar esta compra?')) {
-			deletePurchase(purchaseId)
-			loadData()
+			try {
+				await purchaseAPI.delete(purchaseId)
+				toast.success('Compra eliminada exitosamente')
+				loadData()
+			} catch (error) {
+				console.error('Error deleting purchase:', error)
+				toast.error('Error al eliminar la compra')
+			}
 		}
 	}
 
@@ -292,7 +321,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 										>
 											<option value="">Seleccionar producto...</option>
 											{products.map((product) => (
-												<option key={product.id} value={product.id}>
+												<option key={product._id} value={product._id}>
 													{product.name} ({product.type === 'fertilizer' ? 'Fertilizante' : 'Agua'})
 												</option>
 											))}
@@ -337,7 +366,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 										>
 											<option value="">Seleccionar proveedor...</option>
 											{suppliers.map((supplier) => (
-												<option key={supplier.id} value={supplier.name}>
+												<option key={supplier._id} value={supplier.name}>
 													{supplier.name}
 												</option>
 											))}
@@ -369,20 +398,25 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 										}`}>
 											Precio por Unidad (€) *
 										</label>
-										<input
-											type="number"
-											required
-											step="0.01"
-											min="0"
-											value={formData.pricePerUnit}
-											onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
-											className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-												isDarkMode 
-													? 'bg-gray-600 border-gray-500 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-											placeholder="0.00"
-										/>
+																					<input
+												type="number"
+												required
+												step="0.01"
+												min="0"
+												value={formData.pricePerUnit}
+												onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
+												onFocus={(e) => {
+													if (e.target.value === '0') {
+														e.target.value = ''
+													}
+												}}
+												className={`w-full px-3 py-2 border rounded-lg transition-colors ${
+													isDarkMode 
+														? 'bg-gray-600 border-gray-500 text-white' 
+														: 'bg-white border-gray-300 text-gray-900'
+												}`}
+												placeholder="0.00"
+											/>
 									</div>
 									
 									<div>
@@ -399,6 +433,11 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 												min="0"
 												value={formData.quantity}
 												onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
+												onFocus={(e) => {
+													if (e.target.value === '0') {
+														e.target.value = ''
+													}
+												}}
 												className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
 													isDarkMode 
 														? 'bg-gray-600 border-gray-500 text-white' 
@@ -479,7 +518,13 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 							Historial de Compras ({filteredPurchases.length})
 						</h3>
 						
-						{filteredPurchases.length === 0 ? (
+						{isLoading ? (
+							<div className="text-center py-8">
+								<p className={`text-lg ${
+									isDarkMode ? 'text-gray-400' : 'text-gray-500'
+								}`}>Cargando compras...</p>
+							</div>
+						) : filteredPurchases.length === 0 ? (
 							<div className="text-center py-8">
 								<ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
 								<p className={`text-lg ${
@@ -503,7 +548,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 						) : (
 							<div className="space-y-3">
 								{filteredPurchases.map((purchase) => (
-									<div key={purchase.id} className={`p-4 rounded-lg border ${
+									<div key={purchase._id} className={`p-4 rounded-lg border ${
 										isDarkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-white'
 									}`}>
 										<div className="flex items-start justify-between">
@@ -563,7 +608,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 													<Edit className="h-4 w-4" />
 												</button>
 												<button
-													onClick={() => handleDelete(purchase.id)}
+													onClick={() => handleDelete(purchase._id)}
 													className="p-2 rounded-lg hover:bg-red-100 text-red-500 hover:text-red-700 transition-colors"
 												>
 													<Trash2 className="h-4 w-4" />

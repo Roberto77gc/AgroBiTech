@@ -1,6 +1,7 @@
-import React from 'react'
-import { X, Calendar, MapPin, Cloud, FileText, DollarSign, Tag, Leaf, Shield, Zap, Droplets } from 'lucide-react'
-import type { Activity } from '../types'
+import React, { useState } from 'react'
+import { X, Calendar, MapPin, Cloud, FileText, DollarSign, Tag, Leaf, Shield, Zap, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
+import type { Activity, DailyFertigationRecord } from '../types'
+import FertigationDayModal from './FertigationDayModal'
 
 interface ActivityDetailModalProps {
 	isOpen: boolean
@@ -15,6 +16,8 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 	activity, 
 	isDarkMode 
 }) => {
+	const [showFertigationDayModal, setShowFertigationDayModal] = useState(false)
+	const [selectedDay, setSelectedDay] = useState<DailyFertigationRecord | undefined>(undefined)
 	const getCropTypeColor = (cropType: string) => {
 		const colors: { [key: string]: string } = {
 			tomate: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -52,6 +55,36 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 			style: 'currency',
 			currency: 'EUR'
 		}).format(amount)
+	}
+
+	const handleAddFertigationDay = () => {
+		setSelectedDay(undefined)
+		setShowFertigationDayModal(true)
+	}
+
+	const handleEditFertigationDay = (day: DailyFertigationRecord) => {
+		setSelectedDay(day)
+		setShowFertigationDayModal(true)
+	}
+
+	const handleDeleteFertigationDay = (index: number) => {
+		if (confirm('¿Estás seguro de que quieres eliminar este día de fertirriego?')) {
+			// Aquí implementarías la lógica para eliminar el día
+			console.log('Eliminar día:', index)
+		}
+	}
+
+	const handleFertigationDaySubmit = async (dayData: DailyFertigationRecord) => {
+		try {
+			// Aquí implementarías la lógica para guardar/actualizar el día
+			console.log('Guardar día:', dayData)
+			
+			// Por ahora, solo cerramos el modal
+			setShowFertigationDayModal(false)
+			setSelectedDay(undefined)
+		} catch (error) {
+			console.error('Error saving fertigation day:', error)
+		}
 	}
 
 	if (!isOpen) return null
@@ -170,21 +203,50 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								{/* Fertirriego */}
 								{activity.fertigation?.enabled && (
 									<div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'}`}>
-										<div className="flex items-center space-x-2 mb-3">
-											<Leaf className="h-5 w-5 text-green-600" />
-											<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-												Fertirriego - Registro Diario
-											</h4>
+										<div className="flex items-center justify-between mb-3">
+											<div className="flex items-center space-x-2">
+												<Leaf className="h-5 w-5 text-green-600" />
+												<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+													Fertirriego - Registro Diario
+												</h4>
+											</div>
+											<button
+												onClick={handleAddFertigationDay}
+												className="flex items-center space-x-2 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+											>
+												<Plus className="h-4 w-4" />
+												<span>Añadir Día</span>
+											</button>
 										</div>
 										
 										{activity.fertigation.dailyRecords && activity.fertigation.dailyRecords.length > 0 ? (
 											<div className="space-y-3">
 												{activity.fertigation.dailyRecords.map((record, index) => (
 													<div key={index} className={`p-3 rounded border ${isDarkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-white'}`}>
-														<div className="mb-3">
+														<div className="flex items-center justify-between mb-3">
 															<h6 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
 																{record.date} - {record.fertilizers.length} fertilizante(s)
 															</h6>
+															<div className="flex items-center space-x-2">
+																<button
+																	onClick={() => handleEditFertigationDay(record)}
+																	className={`p-1 rounded transition-colors ${
+																		isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+																	}`}
+																	title="Editar día"
+																>
+																	<Edit className="h-4 w-4 text-blue-500" />
+																</button>
+																<button
+																	onClick={() => handleDeleteFertigationDay(index)}
+																	className={`p-1 rounded transition-colors ${
+																		isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+																	}`}
+																	title="Eliminar día"
+																>
+																	<Trash2 className="h-4 w-4 text-red-500" />
+																</button>
+															</div>
 														</div>
 														
 														{/* Fertilizantes */}
@@ -497,6 +559,37 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						</div>
 					</div>
 
+					{/* Productos Consumidos */}
+					{activity.consumedProducts && activity.consumedProducts.length > 0 && (
+						<div>
+							<h3 className={`text-lg font-semibold mb-3 flex items-center space-x-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+								<Package className="h-5 w-5 text-blue-600" />
+								<span>Productos Consumidos del Inventario</span>
+							</h3>
+							<div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+								<div className="space-y-3">
+									{activity.consumedProducts.map((product, index) => (
+										<div key={index} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+											<div className="flex items-center space-x-3">
+												<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-900' : 'bg-blue-100'}`}>
+													<Package className="h-4 w-4 text-blue-600" />
+												</div>
+												<div>
+													<p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+														{product.productName}
+													</p>
+													<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+														Consumido: {product.amount} {product.unit}
+													</p>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						</div>
+					)}
+
 					{/* Notas */}
 					{activity.notes && (
 						<div>
@@ -542,6 +635,21 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						Cerrar
 					</button>
 				</div>
+
+				{/* Fertigation Day Modal */}
+				{showFertigationDayModal && (
+					<FertigationDayModal
+						isOpen={showFertigationDayModal}
+						onClose={() => {
+							setShowFertigationDayModal(false)
+							setSelectedDay(undefined)
+						}}
+						onSubmit={handleFertigationDaySubmit}
+						existingDay={selectedDay}
+						activityName={activity.name}
+						isDarkMode={isDarkMode}
+					/>
+				)}
 			</div>
 		</div>
 	)

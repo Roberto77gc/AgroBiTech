@@ -90,6 +90,10 @@ export interface IActivity extends Document {
   // Metadatos
   createdAt: Date;
   updatedAt: Date;
+  
+  // Campos de agrupación (opcionales)
+  cycleId?: string; // Para agrupar actividades del mismo ciclo
+  dayNumber?: number; // Número del día en el ciclo (1, 2, 3...)
 }
 
 // Schema para fertilizante individual
@@ -394,6 +398,16 @@ const ActivitySchema = new Schema<IActivity>({
     type: Number,
     required: true,
     min: 0
+  },
+  
+  // Campos de agrupación (opcionales)
+  cycleId: {
+    type: String,
+    trim: true
+  },
+  dayNumber: {
+    type: Number,
+    min: 1
   }
 }, {
   timestamps: true,
