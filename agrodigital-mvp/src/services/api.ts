@@ -4,6 +4,9 @@ const API_BASE_URL = 'http://localhost:3000/api'
 const authenticatedRequest = async (endpoint: string, options: RequestInit = {}) => {
 	const token = localStorage.getItem('token')
 	
+	console.log(`🌐 API Request: ${endpoint}`)
+	console.log(`🔑 Token presente: ${!!token}`)
+	
 	const config: RequestInit = {
 		...options,
 		headers: {
@@ -19,13 +22,23 @@ const authenticatedRequest = async (endpoint: string, options: RequestInit = {})
 		}
 	}
 	
-	const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-	
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`)
+	try {
+		const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
+		console.log(`📡 Response status: ${response.status}`)
+		
+		if (!response.ok) {
+			const errorText = await response.text()
+			console.error(`❌ HTTP error! status: ${response.status}, body: ${errorText}`)
+			throw new Error(`HTTP error! status: ${response.status}`)
+		}
+		
+		const data = await response.json()
+		console.log(`✅ API Response:`, data)
+		return data
+	} catch (error) {
+		console.error(`❌ API Error for ${endpoint}:`, error)
+		throw error
 	}
-	
-	return response.json()
 }
 
 // Productos y Precios

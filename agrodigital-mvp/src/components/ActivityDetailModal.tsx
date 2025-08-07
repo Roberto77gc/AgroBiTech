@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
-import { X, Calendar, MapPin, Cloud, FileText, DollarSign, Tag, Leaf, Shield, Zap, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
+import { X, Calendar, MapPin, Cloud, FileText, DollarSign, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
 import type { Activity, DailyFertigationRecord } from '../types'
 import FertigationDayModal from './FertigationDayModal'
+import PhytosanitaryDayModal from './PhytosanitaryDayModal'
+import WaterDayModal from './WaterDayModal'
 
 interface ActivityDetailModalProps {
 	isOpen: boolean
@@ -18,6 +20,8 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 }) => {
 	const [showFertigationDayModal, setShowFertigationDayModal] = useState(false)
 	const [selectedDay, setSelectedDay] = useState<DailyFertigationRecord | undefined>(undefined)
+	const [showPhytosanitaryDayModal, setShowPhytosanitaryDayModal] = useState(false)
+	const [showWaterDayModal, setShowWaterDayModal] = useState(false)
 	const getCropTypeColor = (cropType: string) => {
 		const colors: { [key: string]: string } = {
 			tomate: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -84,6 +88,32 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 			setSelectedDay(undefined)
 		} catch (error) {
 			console.error('Error saving fertigation day:', error)
+		}
+	}
+
+	const handleAddPhytosanitaryDay = () => {
+		setShowPhytosanitaryDayModal(true)
+	}
+
+	const handleAddWaterDay = () => {
+		setShowWaterDayModal(true)
+	}
+
+	const handlePhytosanitaryDaySubmit = async (dayData: any) => {
+		try {
+			console.log('Guardar día de fitosanitarios:', dayData)
+			setShowPhytosanitaryDayModal(false)
+		} catch (error) {
+			console.error('Error saving phytosanitary day:', error)
+		}
+	}
+
+	const handleWaterDaySubmit = async (dayData: any) => {
+		try {
+			console.log('Guardar día de agua:', dayData)
+			setShowWaterDayModal(false)
+		} catch (error) {
+			console.error('Error saving water day:', error)
 		}
 	}
 
@@ -194,281 +224,152 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					</div>
 
 					{/* Gestión de Recursos */}
-					{(activity.fertigation?.enabled || activity.phytosanitary?.enabled || activity.water?.enabled || activity.energy?.enabled) && (
-						<div>
-							<h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-								Gestión de Recursos
-							</h3>
-							<div className="space-y-4">
-								{/* Fertirriego */}
-								{activity.fertigation?.enabled && (
-									<div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'}`}>
-										<div className="flex items-center justify-between mb-3">
-											<div className="flex items-center space-x-2">
-												<Leaf className="h-5 w-5 text-green-600" />
-												<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-													Fertirriego - Registro Diario
-												</h4>
-											</div>
-											<button
-												onClick={handleAddFertigationDay}
-												className="flex items-center space-x-2 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-											>
-												<Plus className="h-4 w-4" />
-												<span>Añadir Día</span>
-											</button>
-										</div>
-										
-										{activity.fertigation.dailyRecords && activity.fertigation.dailyRecords.length > 0 ? (
-											<div className="space-y-3">
-												{activity.fertigation.dailyRecords.map((record, index) => (
-													<div key={index} className={`p-3 rounded border ${isDarkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-white'}`}>
-														<div className="flex items-center justify-between mb-3">
-															<h6 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-																{record.date} - {record.fertilizers.length} fertilizante(s)
-															</h6>
-															<div className="flex items-center space-x-2">
-																<button
-																	onClick={() => handleEditFertigationDay(record)}
-																	className={`p-1 rounded transition-colors ${
-																		isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-																	}`}
-																	title="Editar día"
-																>
-																	<Edit className="h-4 w-4 text-blue-500" />
-																</button>
-																<button
-																	onClick={() => handleDeleteFertigationDay(index)}
-																	className={`p-1 rounded transition-colors ${
-																		isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-																	}`}
-																	title="Eliminar día"
-																>
-																	<Trash2 className="h-4 w-4 text-red-500" />
-																</button>
-															</div>
-														</div>
-														
-														{/* Fertilizantes */}
-														<div className="space-y-2 mb-3">
-															{record.fertilizers.map((fertilizer, fertilizerIndex) => (
-																<div key={fertilizerIndex} className={`p-2 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-																	<div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-																		<div>
-																			<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fertilizante {fertilizerIndex + 1}:</p>
-																			<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-																				{fertilizer.fertilizerType} - {fertilizer.fertilizerAmount} {fertilizer.fertilizerUnit}
-																			</p>
-																		</div>
-																		<div>
-																			<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Coste:</p>
-																			<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-																				{formatCurrency(fertilizer.cost)}
-																			</p>
-																		</div>
-																		{fertilizer.notes && (
-																			<div className="md:col-span-2">
-																				<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas:</p>
-																				<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{fertilizer.notes}</p>
-																			</div>
-																		)}
-																		{/* Información del proveedor */}
-																		{(fertilizer.brand || fertilizer.supplier || fertilizer.purchaseDate) && (
-																			<div className="md:col-span-2">
-																				<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Información del Proveedor:</p>
-																				<div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-																					{fertilizer.brand && (
-																						<p>Marca: {fertilizer.brand}</p>
-																					)}
-																					{fertilizer.supplier && (
-																						<p>Proveedor: {fertilizer.supplier}</p>
-																					)}
-																					{fertilizer.purchaseDate && (
-																						<p>Fecha de Compra: {new Date(fertilizer.purchaseDate).toLocaleDateString('es-ES')}</p>
-																					)}
-																				</div>
-																			</div>
-																		)}
-																	</div>
-																</div>
-															))}
-														</div>
-														
-														{/* Agua y coste total */}
-														<div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm pt-2 border-t border-gray-300 dark:border-gray-600">
-															<div>
-																<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Agua:</p>
-																<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-																	{record.waterConsumption} {record.waterUnit}
-																</p>
-															</div>
-															<div>
-																<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Coste Total:</p>
-																<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-																	{formatCurrency(record.totalCost)}
-																</p>
-															</div>
-															{record.notes && (
-																<div className="md:col-span-2">
-																	<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas del día:</p>
-																	<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{record.notes}</p>
-																</div>
-															)}
-														</div>
-													</div>
-												))}
-											</div>
-										) : (
-											<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-												No hay registros diarios de fertirriego
-											</p>
-										)}
-										
-										{activity.fertigation.notes && (
-											<div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
-												<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas generales:</p>
-												<p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.fertigation.notes}</p>
-											</div>
-										)}
-									</div>
-								)}
+					<div className="space-y-6">
+						<h3 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+							Gestión de Recursos
+						</h3>
 
-								{/* Tratamientos Fitosanitarios */}
-								{activity.phytosanitary?.enabled && (
-									<div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'}`}>
-										<div className="flex items-center space-x-2 mb-3">
-											<Shield className="h-5 w-5 text-orange-600" />
-											<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-												Tratamientos Fitosanitarios
-											</h4>
-										</div>
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-											{activity.phytosanitary.treatmentType && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tipo:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.phytosanitary.treatmentType}</p>
-												</div>
-											)}
-											{activity.phytosanitary.productName && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Producto:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.phytosanitary.productName}</p>
-												</div>
-											)}
-											{activity.phytosanitary.applicationDate && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fecha:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatDate(activity.phytosanitary.applicationDate)}</p>
-												</div>
-											)}
-											{activity.phytosanitary.dosage && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dosis:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.phytosanitary.dosage}</p>
-												</div>
-											)}
-											{activity.phytosanitary.notes && (
-												<div className="md:col-span-2">
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.phytosanitary.notes}</p>
-												</div>
-											)}
-										</div>
+						{/* Fertirriego */}
+						<div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center space-x-2">
+									<div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+										<Leaf className="w-4 h-4 text-green-600 dark:text-green-400" />
 									</div>
-								)}
-
-								{/* Agua */}
-								{activity.water?.enabled && (
-									<div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'}`}>
-										<div className="flex items-center space-x-2 mb-3">
-											<Droplets className="h-5 w-5 text-blue-600" />
-											<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-												Gestión del Agua
-											</h4>
-										</div>
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-											{activity.water.waterSource && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fuente:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.water.waterSource}</p>
-												</div>
-											)}
-											{activity.water.irrigationType && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Riego:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.water.irrigationType}</p>
-												</div>
-											)}
-											{activity.water.dailyConsumption && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Consumo Diario:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-														{activity.water.dailyConsumption} {activity.water.waterUnit}
-													</p>
-												</div>
-											)}
-											{activity.water.cost && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Coste Diario:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-														{formatCurrency(activity.water.cost)}
-													</p>
-												</div>
-											)}
-											{activity.water.notes && (
-												<div className="md:col-span-2">
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.water.notes}</p>
-												</div>
-											)}
-										</div>
-									</div>
-								)}
-
-								{/* Energía */}
-								{activity.energy?.enabled && (
-									<div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'}`}>
-										<div className="flex items-center space-x-2 mb-3">
-											<Zap className="h-5 w-5 text-yellow-600" />
-											<h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-												Gestión de Energía
-											</h4>
-										</div>
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-											{activity.energy.energyType && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tipo:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.energy.energyType}</p>
-												</div>
-											)}
-											{activity.energy.dailyConsumption && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Consumo Diario:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-														{activity.energy.dailyConsumption} {activity.energy.energyUnit}
-													</p>
-												</div>
-											)}
-											{activity.energy.cost && (
-												<div>
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Coste Diario:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-														{formatCurrency(activity.energy.cost)}
-													</p>
-												</div>
-											)}
-											{activity.energy.notes && (
-												<div className="md:col-span-2">
-													<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notas:</p>
-													<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activity.energy.notes}</p>
-												</div>
-											)}
-										</div>
-									</div>
-								)}
+									<h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+										Fertirriego - Registro Diario
+									</h4>
+								</div>
+								<button
+									onClick={handleAddFertigationDay}
+									className="flex items-center space-x-2 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+								>
+									<Plus className="h-4 w-4" />
+									<span>Añadir Día</span>
+								</button>
 							</div>
+
+							{activity.fertigation?.dailyRecords && activity.fertigation.dailyRecords.length > 0 ? (
+								<div className="space-y-3">
+									{activity.fertigation.dailyRecords.map((record, index) => (
+										<div
+											key={index}
+											className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}
+										>
+											<div className="flex items-center justify-between mb-2">
+												<span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+													{new Date(record.date).toLocaleDateString('es-ES')} - {record.fertilizers.length} fertilizante(s)
+												</span>
+												<div className="flex space-x-2">
+													<button
+														onClick={() => handleEditFertigationDay(record)}
+														className="text-blue-500 hover:text-blue-700 transition-colors"
+													>
+														<Edit className="h-4 w-4" />
+													</button>
+													<button
+														onClick={() => handleDeleteFertigationDay(index)}
+														className="text-red-500 hover:text-red-700 transition-colors"
+													>
+														<Trash2 className="h-4 w-4" />
+													</button>
+												</div>
+											</div>
+											{record.fertilizers.map((fertilizer, fIndex) => (
+												<div key={fIndex} className="ml-4 mb-2">
+													<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+														<strong>Fertilizante {fIndex + 1}:</strong> {fertilizer.fertilizerType} - {fertilizer.fertilizerAmount} {fertilizer.fertilizerUnit}
+													</div>
+													{fertilizer.brand && (
+														<div className={`text-xs ml-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+															Marca: {fertilizer.brand} | Proveedor: {fertilizer.supplier} | Coste: {(fertilizer.fertilizerAmount * (fertilizer.price || 0)).toFixed(2)}€
+														</div>
+													)}
+												</div>
+											))}
+											{record.waterConsumption > 0 && (
+												<div className={`text-sm ml-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+													<strong>Agua:</strong> {record.waterConsumption} {record.waterUnit}
+												</div>
+											)}
+											{record.notes && (
+												<div className={`text-sm ml-4 mt-2 italic ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+													"{record.notes}"
+												</div>
+											)}
+										</div>
+									))}
+								</div>
+							) : (
+								<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+									No hay registros de fertirriego
+								</p>
+							)}
 						</div>
-					)}
+
+						{/* Fitosanitarios */}
+						<div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center space-x-2">
+									<div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+										<Shield className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+									</div>
+									<h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+										Fitosanitarios - Registro Diario
+									</h4>
+								</div>
+								<button
+									onClick={handleAddPhytosanitaryDay}
+									className="flex items-center space-x-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+								>
+									<Plus className="h-4 w-4" />
+									<span>Añadir Día</span>
+								</button>
+							</div>
+
+							<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+								No hay registros de fitosanitarios
+							</p>
+						</div>
+
+						{/* Agua */}
+						<div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center space-x-2">
+									<div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+										<Droplets className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+									</div>
+									<h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+										Agua - Consumo Diario
+									</h4>
+								</div>
+								<button
+									onClick={handleAddWaterDay}
+									className="flex items-center space-x-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+								>
+									<Plus className="h-4 w-4" />
+									<span>Añadir Día</span>
+								</button>
+							</div>
+
+							{activity.water && (activity.water as any).consumption > 0 ? (
+								<div className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}>
+									<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+										<strong>Consumo:</strong> {(activity.water as any).consumption} {(activity.water as any).unit}
+									</div>
+									{(activity.water as any).cost > 0 && (
+										<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+											<strong>Coste:</strong> {(activity.water as any).cost.toFixed(2)}€
+										</div>
+									)}
+								</div>
+							) : (
+								<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+									No hay registros de consumo de agua
+								</p>
+							)}
+						</div>
+					</div>
 
 					{/* Fotos */}
 					{activity.photos && activity.photos.length > 0 && (
@@ -648,6 +549,28 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						existingDay={selectedDay}
 						activityName={activity.name}
 						isDarkMode={isDarkMode}
+					/>
+				)}
+
+				{/* Phytosanitary Day Modal */}
+				{showPhytosanitaryDayModal && (
+					<PhytosanitaryDayModal
+						isOpen={showPhytosanitaryDayModal}
+						onClose={() => setShowPhytosanitaryDayModal(false)}
+						activityName={activity.name}
+						isDarkMode={isDarkMode}
+						onSubmit={handlePhytosanitaryDaySubmit}
+					/>
+				)}
+
+				{/* Water Day Modal */}
+				{showWaterDayModal && (
+					<WaterDayModal
+						isOpen={showWaterDayModal}
+						onClose={() => setShowWaterDayModal(false)}
+						activityName={activity.name}
+						isDarkMode={isDarkMode}
+						onSubmit={handleWaterDaySubmit}
 					/>
 				)}
 			</div>

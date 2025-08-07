@@ -1,18 +1,38 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
-import type { DailyFertigationRecord, FertilizerRecord, ProductPrice } from '../types'
-import { productAPI, inventoryAPI } from '../services/api'
+import type { ProductPrice } from '../types'
+import { productAPI } from '../services/api'
 
-interface FertigationDayModalProps {
+interface PhytosanitaryRecord {
+	productId: string
+	phytosanitaryType: string
+	phytosanitaryAmount: number
+	phytosanitaryUnit: string
+	price?: number
+	unit?: string
+	brand: string
+	supplier: string
+	purchaseDate: string
+	cost: number
+}
+
+interface DailyPhytosanitaryRecord {
+	date: string
+	phytosanitaries: PhytosanitaryRecord[]
+	notes: string
+	totalCost: number
+}
+
+interface PhytosanitaryDayModalProps {
 	isOpen: boolean
 	onClose: () => void
-	onSubmit: (dayData: DailyFertigationRecord) => void
-	existingDay?: DailyFertigationRecord
+	onSubmit: (dayData: DailyPhytosanitaryRecord) => void
+	existingDay?: DailyPhytosanitaryRecord
 	activityName: string
 	isDarkMode: boolean
 }
 
-const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
+const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 	isOpen,
 	onClose,
 	onSubmit,
@@ -20,16 +40,14 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	activityName,
 	isDarkMode
 }) => {
-	const [formData, setFormData] = useState<DailyFertigationRecord>({
+	const [formData, setFormData] = useState<DailyPhytosanitaryRecord>({
 		date: '',
-		fertilizers: [],
-		waterConsumption: 0,
-		waterUnit: 'L',
+		phytosanitaries: [],
 		notes: '',
 		totalCost: 0
 	})
 
-	const [availableFertilizers, setAvailableFertilizers] = useState<ProductPrice[]>([])
+	const [availablePhytosanitaries, setAvailablePhytosanitaries] = useState<ProductPrice[]>([])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
@@ -39,12 +57,9 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			if (existingDay) {
 				setFormData(existingDay)
 			} else {
-				// Fecha por defecto: hoy
 				setFormData({
 					date: new Date().toISOString().split('T')[0],
-					fertilizers: [],
-					waterConsumption: 0,
-					waterUnit: 'L',
+					phytosanitaries: [],
 					notes: '',
 					totalCost: 0
 				})
@@ -54,39 +69,30 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 
 	const loadData = async () => {
 		try {
-			console.log('🔄 Cargando fertilizantes...')
-			
-			const fertilizersResponse = await productAPI.getByType('fertilizer')
-			
-			console.log('📦 Respuesta fertilizantes:', fertilizersResponse)
-			
-			// Solo fertilizantes, no fitosanitarios
-			const fertilizers = fertilizersResponse?.products || fertilizersResponse || []
-			
-			console.log('📦 Fertilizantes extraídos:', fertilizers)
-			
-			setAvailableFertilizers(Array.isArray(fertilizers) ? fertilizers : [])
+			const phytosanitariesResponse = await productAPI.getByType('phytosanitary')
+			const phytosanitaries = phytosanitariesResponse?.products || phytosanitariesResponse || []
+			setAvailablePhytosanitaries(Array.isArray(phytosanitaries) ? phytosanitaries : [])
 		} catch (error) {
-			console.error('❌ Error loading fertilizers:', error)
-			setAvailableFertilizers([])
+			console.error('Error loading phytosanitaries:', error)
+			setAvailablePhytosanitaries([])
 		}
 	}
 
-	const handleInputChange = (field: keyof DailyFertigationRecord, value: any) => {
+	const handleInputChange = (field: keyof DailyPhytosanitaryRecord, value: any) => {
 		setFormData(prev => ({ ...prev, [field]: value }))
 		if (errors[field]) {
 			setErrors(prev => ({ ...prev, [field]: '' }))
 		}
 	}
 
-	const addFertilizer = () => {
-		const newFertilizer: FertilizerRecord = {
+	const addPhytosanitary = () => {
+		const newPhytosanitary: PhytosanitaryRecord = {
 			productId: '',
-			fertilizerType: '',
-			fertilizerAmount: 0,
-			fertilizerUnit: 'kg',
+			phytosanitaryType: '',
+			phytosanitaryAmount: 0,
+			phytosanitaryUnit: 'L',
 			price: 0,
-			unit: 'kg',
+			unit: 'L',
 			brand: '',
 			supplier: '',
 			purchaseDate: '',
@@ -94,46 +100,38 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 		}
 		setFormData(prev => ({
 			...prev,
-			fertilizers: [...prev.fertilizers, newFertilizer]
+			phytosanitaries: [...prev.phytosanitaries, newPhytosanitary]
 		}))
 	}
 
-	const updateFertilizer = (index: number, field: keyof FertilizerRecord, value: any) => {
+	const updatePhytosanitary = (index: number, field: keyof PhytosanitaryRecord, value: any) => {
 		setFormData(prev => ({
 			...prev,
-			fertilizers: prev.fertilizers.map((fertilizer, i) => 
-				i === index ? { ...fertilizer, [field]: value } : fertilizer
+			phytosanitaries: prev.phytosanitaries.map((phytosanitary, i) => 
+				i === index ? { ...phytosanitary, [field]: value } : phytosanitary
 			)
 		}))
 	}
 
-	const removeFertilizer = (index: number) => {
+	const removePhytosanitary = (index: number) => {
 		setFormData(prev => ({
 			...prev,
-			fertilizers: prev.fertilizers.filter((_, i) => i !== index)
+			phytosanitaries: prev.phytosanitaries.filter((_, i) => i !== index)
 		}))
 	}
 
-	const handleFertilizerTypeChange = async (index: number, productId: string) => {
+	const handlePhytosanitaryTypeChange = async (index: number, productId: string) => {
 		if (!productId) return
 
 		try {
-			const product = availableFertilizers.find(p => p._id === productId)
+			const product = availablePhytosanitaries.find(p => p._id === productId)
 			if (product) {
-				// Buscar información del inventario
-				const inventoryItem = await inventoryAPI.getByProduct(productId)
-				
-				updateFertilizer(index, 'productId', productId)
-				updateFertilizer(index, 'fertilizerType', product.name)
-				updateFertilizer(index, 'price', product.pricePerUnit)
-				updateFertilizer(index, 'brand', product.brand || '')
-				updateFertilizer(index, 'supplier', product.supplier || '')
-				updateFertilizer(index, 'purchaseDate', product.purchaseDate || '')
-				
-				// Mostrar stock disponible si existe
-				if (inventoryItem) {
-					console.log(`Stock disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`)
-				}
+				updatePhytosanitary(index, 'productId', productId)
+				updatePhytosanitary(index, 'phytosanitaryType', product.name)
+				updatePhytosanitary(index, 'price', product.pricePerUnit)
+				updatePhytosanitary(index, 'brand', product.brand || '')
+				updatePhytosanitary(index, 'supplier', product.supplier || '')
+				updatePhytosanitary(index, 'purchaseDate', product.purchaseDate || '')
 			}
 		} catch (error) {
 			console.error('Error loading product details:', error)
@@ -141,9 +139,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	}
 
 	const calculateTotalCost = () => {
-		const fertilizersCost = formData.fertilizers.reduce((sum, f) => sum + f.cost, 0)
-		const waterCost = formData.waterConsumption * 0.001 // Costo estimado por litro
-		return fertilizersCost + waterCost
+		return formData.phytosanitaries.reduce((sum, p) => sum + p.cost, 0)
 	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -151,30 +147,14 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 		setIsSubmitting(true)
 
 		try {
-			// Validar formulario
 			const newErrors: { [key: string]: string } = {}
 			
 			if (!formData.date) {
 				newErrors.date = 'La fecha es requerida'
 			}
 			
-			if (formData.fertilizers.length === 0) {
-				newErrors.fertilizers = 'Debe añadir al menos un fertilizante'
-			}
-
-			// Validar stock disponible
-			for (let i = 0; i < formData.fertilizers.length; i++) {
-				const fertilizer = formData.fertilizers[i]
-				if (fertilizer.productId && fertilizer.fertilizerAmount > 0) {
-					try {
-						const inventoryItem = await inventoryAPI.getByProduct(fertilizer.productId)
-						if (inventoryItem && fertilizer.fertilizerAmount > inventoryItem.currentStock) {
-							newErrors[`fertilizer_${i}`] = `Stock insuficiente. Disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`
-						}
-					} catch (error) {
-						console.error('Error validating stock:', error)
-					}
-				}
+			if (formData.phytosanitaries.length === 0) {
+				newErrors.phytosanitaries = 'Debe añadir al menos un fitosanitario'
 			}
 
 			if (Object.keys(newErrors).length > 0) {
@@ -182,20 +162,19 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 				return
 			}
 
-			// Calcular costos
 			const updatedFormData = {
 				...formData,
 				totalCost: calculateTotalCost(),
-				fertilizers: formData.fertilizers.map(f => ({
-					...f,
-					cost: f.fertilizerAmount * (f.price || 0)
+				phytosanitaries: formData.phytosanitaries.map(p => ({
+					...p,
+					cost: p.phytosanitaryAmount * (p.price || 0)
 				}))
 			}
 
 			await onSubmit(updatedFormData)
 			onClose()
 		} catch (error) {
-			console.error('Error submitting fertigation day:', error)
+			console.error('Error submitting phytosanitary day:', error)
 		} finally {
 			setIsSubmitting(false)
 		}
@@ -214,22 +193,17 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
-				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
 					<h2 className="text-xl font-bold">
-						{existingDay ? 'Editar Día de Fertirriego' : 'Añadir Día de Fertirriego'}
+						{existingDay ? 'Editar Día de Fitosanitarios' : 'Añadir Día de Fitosanitarios'}
 					</h2>
-					<button
-						onClick={onClose}
-						className={`p-2 rounded-lg transition-colors ${
-							isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-						}`}
-					>
+					<button onClick={onClose} className={`p-2 rounded-lg transition-colors ${
+						isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+					}`}>
 						<X className="h-5 w-5" />
 					</button>
 				</div>
 
-				{/* Content */}
 				<div className="p-6">
 					<div className="mb-4">
 						<p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -238,7 +212,6 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-6">
-						{/* Fecha */}
 						<div>
 							<label className={`block text-sm font-medium mb-2 ${
 								isDarkMode ? 'text-gray-300' : 'text-gray-700'
@@ -260,50 +233,46 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 							)}
 						</div>
 
-						{/* Fertilizantes */}
 						<div>
 							<div className="flex items-center justify-between mb-4">
 								<label className={`text-sm font-medium ${
 									isDarkMode ? 'text-gray-300' : 'text-gray-700'
 								}`}>
-									Productos (Fertilizantes)
+									Fitosanitarios
 								</label>
 								<button
 									type="button"
-									onClick={addFertilizer}
-									className="flex items-center space-x-2 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+									onClick={addPhytosanitary}
+									className="flex items-center space-x-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
 								>
 									<Plus className="h-4 w-4" />
-									<span>Añadir Fertilizante</span>
+									<span>Añadir Fitosanitario</span>
 								</button>
 							</div>
 
-							{formData.fertilizers.length === 0 ? (
+							{formData.phytosanitaries.length === 0 ? (
 								<div className={`p-4 border-2 border-dashed rounded-lg text-center ${
 									isDarkMode ? 'border-gray-600 text-gray-400' : 'border-gray-300 text-gray-500'
 								}`}>
-									<p className="text-sm mb-2">No hay productos añadidos</p>
+									<p className="text-sm mb-2">No hay fitosanitarios añadidos</p>
 									<p className="text-xs">
-										{availableFertilizers.length === 0 
-											? 'No hay fertilizantes registrados. Ve a "Gestión > Productos y Precios" para añadir fertilizantes.'
-											: 'Haz clic en "Añadir Fertilizante" para comenzar'
+										{availablePhytosanitaries.length === 0 
+											? 'No hay fitosanitarios registrados. Ve a "Gestión > Productos y Precios" para añadir fitosanitarios.'
+											: 'Haz clic en "Añadir Fitosanitario" para comenzar'
 										}
 									</p>
 								</div>
 							) : (
 								<div className="space-y-4">
-									{formData.fertilizers.map((fertilizer, index) => (
-										<div
-											key={index}
-											className={`p-4 border rounded-lg transition-colors ${
-												isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-											}`}
-										>
+									{formData.phytosanitaries.map((phytosanitary, index) => (
+										<div key={index} className={`p-4 border rounded-lg transition-colors ${
+											isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+										}`}>
 											<div className="flex items-center justify-between mb-3">
-												<h4 className="font-medium">Producto {index + 1}</h4>
+												<h4 className="font-medium">Fitosanitario {index + 1}</h4>
 												<button
 													type="button"
-													onClick={() => removeFertilizer(index)}
+													onClick={() => removePhytosanitary(index)}
 													className="text-red-500 hover:text-red-700 transition-colors"
 												>
 													<Trash2 className="h-4 w-4" />
@@ -315,11 +284,11 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 													<label className={`block text-sm font-medium mb-2 ${
 														isDarkMode ? 'text-gray-300' : 'text-gray-700'
 													}`}>
-														Tipo de Fertilizante
+														Seleccionar Fitosanitario
 													</label>
 													<select
-														value={fertilizer.productId}
-														onChange={(e) => handleFertilizerTypeChange(index, e.target.value)}
+														value={phytosanitary.productId}
+														onChange={(e) => handlePhytosanitaryTypeChange(index, e.target.value)}
 														className={`w-full px-3 py-2 border rounded-lg transition-colors ${
 															isDarkMode 
 																? 'bg-gray-700 border-gray-600 text-white' 
@@ -327,12 +296,12 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 														}`}
 													>
 														<option value="">
-															{availableFertilizers.length === 0 
-																? 'No hay fertilizantes disponibles' 
-																: 'Seleccionar fertilizante'
+															{availablePhytosanitaries.length === 0 
+																? 'No hay fitosanitarios disponibles' 
+																: 'Seleccionar fitosanitario'
 															}
 														</option>
-														{availableFertilizers.map(product => (
+														{availablePhytosanitaries.map(product => (
 															<option key={product._id} value={product._id}>
 																{product.name} - {product.pricePerUnit}€/{product.unit}
 															</option>
@@ -351,8 +320,8 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 															type="number"
 															step="0.01"
 															min="0"
-															value={fertilizer.fertilizerAmount}
-															onChange={(e) => updateFertilizer(index, 'fertilizerAmount', parseFloat(e.target.value) || 0)}
+															value={phytosanitary.phytosanitaryAmount}
+															onChange={(e) => updatePhytosanitary(index, 'phytosanitaryAmount', parseFloat(e.target.value) || 0)}
 															onFocus={handleNumberFocus}
 															className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
@@ -361,102 +330,59 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 															}`}
 														/>
 														<select
-															value={fertilizer.unit || 'kg'}
-															onChange={(e) => updateFertilizer(index, 'unit', e.target.value)}
+															value={phytosanitary.unit || 'L'}
+															onChange={(e) => updatePhytosanitary(index, 'unit', e.target.value)}
 															className={`px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
 																	? 'bg-gray-700 border-gray-600 text-white' 
 																	: 'bg-white border-gray-300 text-gray-900'
 															}`}
 														>
-															<option value="kg">kg</option>
-															<option value="g">g</option>
 															<option value="L">L</option>
 															<option value="ml">ml</option>
+															<option value="kg">kg</option>
+															<option value="g">g</option>
 														</select>
 													</div>
 												</div>
 											</div>
 
-											{/* Información del producto */}
-											{fertilizer.productId && (
-												<div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+											{phytosanitary.productId && (
+												<div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
 													<div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
 														<div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Marca:
-															</span> {fertilizer.brand}
+															</span> {phytosanitary.brand}
 														</div>
 														<div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Proveedor:
-															</span> {fertilizer.supplier}
+															</span> {phytosanitary.supplier}
 														</div>
 														<div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Precio:
-															</span> {(fertilizer.price || 0)}€/{fertilizer.unit || 'kg'}
+															</span> {(phytosanitary.price || 0)}€/{phytosanitary.unit || 'L'}
 														</div>
 													</div>
 													<div className="mt-2">
 														<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 															Coste:
-														</span> {(fertilizer.fertilizerAmount * (fertilizer.price || 0)).toFixed(2)}€
+														</span> {(phytosanitary.phytosanitaryAmount * (phytosanitary.price || 0)).toFixed(2)}€
 													</div>
 												</div>
-											)}
-
-											{errors[`fertilizer_${index}`] && (
-												<p className="text-red-500 text-sm mt-2">{errors[`fertilizer_${index}`]}</p>
 											)}
 										</div>
 									))}
 								</div>
 							)}
 
-							{errors.fertilizers && (
-								<p className="text-red-500 text-sm mt-2">{errors.fertilizers}</p>
+							{errors.phytosanitaries && (
+								<p className="text-red-500 text-sm mt-2">{errors.phytosanitaries}</p>
 							)}
 						</div>
 
-						{/* Consumo de Agua */}
-						<div>
-							<label className={`block text-sm font-medium mb-2 ${
-								isDarkMode ? 'text-gray-300' : 'text-gray-700'
-							}`}>
-								Consumo de Agua
-							</label>
-							<div className="flex space-x-2">
-								<input
-									type="number"
-									step="0.01"
-									min="0"
-									value={formData.waterConsumption}
-									onChange={(e) => handleInputChange('waterConsumption', parseFloat(e.target.value) || 0)}
-									onFocus={handleNumberFocus}
-									className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
-										isDarkMode 
-											? 'bg-gray-700 border-gray-600 text-white' 
-											: 'bg-white border-gray-300 text-gray-900'
-									}`}
-									placeholder="0"
-								/>
-								<select
-									value={formData.waterUnit}
-									onChange={(e) => handleInputChange('waterUnit', e.target.value)}
-									className={`px-3 py-2 border rounded-lg transition-colors ${
-										isDarkMode 
-											? 'bg-gray-700 border-gray-600 text-white' 
-											: 'bg-white border-gray-300 text-gray-900'
-									}`}
-								>
-									<option value="L">L</option>
-									<option value="m3">m³</option>
-								</select>
-							</div>
-						</div>
-
-						{/* Notas */}
 						<div>
 							<label className={`block text-sm font-medium mb-2 ${
 								isDarkMode ? 'text-gray-300' : 'text-gray-700'
@@ -472,11 +398,10 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 										? 'bg-gray-700 border-gray-600 text-white' 
 										: 'bg-white border-gray-300 text-gray-900'
 								}`}
-								placeholder="Observaciones sobre el fertirriego del día..."
+								placeholder="Observaciones sobre la aplicación de fitosanitarios del día..."
 							/>
 						</div>
 
-						{/* Coste Total */}
 						<div className={`p-4 rounded-lg ${
 							isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
 						}`}>
@@ -484,13 +409,12 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 								<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 									Coste Total del Día:
 								</span>
-								<span className="text-lg font-bold text-green-600">
+								<span className="text-lg font-bold text-orange-600">
 									{calculateTotalCost().toFixed(2)}€
 								</span>
 							</div>
 						</div>
 
-						{/* Actions */}
 						<div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
 							<button
 								type="button"
@@ -506,7 +430,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 							<button
 								type="submit"
 								disabled={isSubmitting}
-								className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+								className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
 							>
 								{isSubmitting ? 'Guardando...' : (existingDay ? 'Actualizar Día' : 'Añadir Día')}
 							</button>
@@ -518,4 +442,4 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	)
 }
 
-export default FertigationDayModal 
+export default PhytosanitaryDayModal
