@@ -29,12 +29,38 @@ export interface IFertigationData {
   notes?: string;
 }
 
+export interface IPhytosanitaryRecord {
+  productId: string;
+  phytosanitaryType: string;
+  phytosanitaryAmount: number;
+  phytosanitaryUnit: string;
+  cost: number;
+  price?: number;
+  unit?: string;
+  brand: string;
+  supplier: string;
+  purchaseDate: string;
+  notes?: string;
+}
+
+export interface IDailyPhytosanitaryRecord {
+  date: string;
+  phytosanitaries: IPhytosanitaryRecord[];
+  totalCost: number;
+  notes?: string;
+}
+
 export interface IPhytosanitaryData {
   enabled: boolean;
-  treatmentType?: string;
-  productName?: string;
-  applicationDate?: string;
-  dosage?: string;
+  dailyRecords: IDailyPhytosanitaryRecord[];
+  notes?: string;
+}
+
+export interface IDailyWaterRecord {
+  date: string;
+  consumption: number;
+  unit: string;
+  cost: number;
   notes?: string;
 }
 
@@ -42,9 +68,7 @@ export interface IWaterData {
   enabled: boolean;
   waterSource?: string;
   irrigationType?: string;
-  dailyConsumption?: number;
-  waterUnit?: string;
-  cost?: number;
+  dailyRecords: IDailyWaterRecord[];
   notes?: string;
 }
 
@@ -195,32 +219,121 @@ const FertigationDataSchema = new Schema<IFertigationData>({
   }
 }, { _id: false });
 
+// Schema para fitosanitario individual
+const PhytosanitaryRecordSchema = new Schema<IPhytosanitaryRecord>({
+  productId: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  phytosanitaryType: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  phytosanitaryAmount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  phytosanitaryUnit: {
+    type: String,
+    required: true,
+    enum: ['L', 'ml', 'kg', 'g']
+  },
+  cost: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  price: {
+    type: Number,
+    min: 0
+  },
+  unit: {
+    type: String,
+    trim: true
+  },
+  brand: {
+    type: String,
+    trim: true
+  },
+  supplier: {
+    type: String,
+    trim: true
+  },
+  purchaseDate: {
+    type: String,
+    trim: true
+  },
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  }
+}, { _id: false });
+
+// Schema para registro diario de fitosanitarios
+const DailyPhytosanitaryRecordSchema = new Schema<IDailyPhytosanitaryRecord>({
+  date: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  phytosanitaries: {
+    type: [PhytosanitaryRecordSchema],
+    default: []
+  },
+  totalCost: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  }
+}, { _id: false });
+
+// Schema para registro diario de agua
+const DailyWaterRecordSchema = new Schema<IDailyWaterRecord>({
+  date: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  consumption: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  unit: {
+    type: String,
+    required: true,
+    enum: ['L', 'm3']
+  },
+  cost: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  }
+}, { _id: false });
+
 // Schema para tratamientos fitosanitarios
 const PhytosanitaryDataSchema = new Schema<IPhytosanitaryData>({
   enabled: {
     type: Boolean,
     default: false
   },
-  treatmentType: {
-    type: String,
-    trim: true
-  },
-  productName: {
-    type: String,
-    trim: true
-  },
-  applicationDate: {
-    type: String,
-    validate: {
-      validator: function(v: string) {
-        return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);
-      },
-      message: 'Application date must be in YYYY-MM-DD format'
-    }
-  },
-  dosage: {
-    type: String,
-    trim: true
+  dailyRecords: {
+    type: [DailyPhytosanitaryRecordSchema],
+    default: []
   },
   notes: {
     type: String,
@@ -243,17 +356,9 @@ const WaterDataSchema = new Schema<IWaterData>({
     type: String,
     trim: true
   },
-  dailyConsumption: {
-    type: Number,
-    min: 0
-  },
-  waterUnit: {
-    type: String,
-    enum: ['L', 'm3', 'gal']
-  },
-  cost: {
-    type: Number,
-    min: 0
+  dailyRecords: {
+    type: [DailyWaterRecordSchema],
+    default: []
   },
   notes: {
     type: String,

@@ -17,14 +17,14 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 }) => {
 	const [products, setProducts] = useState<ProductPrice[]>([])
 	const [filteredProducts, setFilteredProducts] = useState<ProductPrice[]>([])
-	const [selectedType, setSelectedType] = useState<'fertilizer' | 'water' | 'phytosanitary'>('fertilizer')
+	const [selectedType, setSelectedType] = useState<'all' | 'fertilizer' | 'water' | 'phytosanitary' | 'others'>('all')
 	const [searchTerm, setSearchTerm] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
 	const [showForm, setShowForm] = useState(false)
 	const [editingProduct, setEditingProduct] = useState<ProductPrice | null>(null)
 	const [formData, setFormData] = useState({
 		name: '',
-		type: 'fertilizer' as 'fertilizer' | 'water' | 'phytosanitary',
+		type: 'fertilizer' as 'fertilizer' | 'water' | 'phytosanitary' | 'others',
 		pricePerUnit: '',
 		unit: '',
 		category: '',
@@ -215,9 +215,11 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 											: 'bg-white border-gray-300 text-gray-900'
 									}`}
 								>
+									<option value="all">Todos los tipos</option>
 									<option value="fertilizer">Fertilizantes</option>
 									<option value="water">Agua</option>
 									<option value="phytosanitary">Fitosanitarios</option>
+									<option value="others">Otros</option>
 								</select>
 							</div>
 
@@ -377,6 +379,7 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 												<option value="fertilizer">Fertilizante</option>
 												<option value="water">Agua</option>
 												<option value="phytosanitary">Fitosanitario</option>
+												<option value="others">Otros</option>
 											</select>
 										</div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
-import type { ProductPrice } from '../types'
+import type { ProductPrice, DailyPhytosanitaryRecord as DailyPhytoTypesRecord } from '../types'
 import { productAPI } from '../services/api'
 
 interface PhytosanitaryRecord {
@@ -16,12 +16,8 @@ interface PhytosanitaryRecord {
 	cost: number
 }
 
-interface DailyPhytosanitaryRecord {
-	date: string
-	phytosanitaries: PhytosanitaryRecord[]
-	notes: string
-	totalCost: number
-}
+// Alinear firma local con tipos globales
+type DailyPhytosanitaryRecord = DailyPhytoTypesRecord
 
 interface PhytosanitaryDayModalProps {
 	isOpen: boolean
@@ -171,6 +167,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 				}))
 			}
 
+			// Llamar a la función onSubmit que ahora conectará con el backend
 			await onSubmit(updatedFormData)
 			onClose()
 		} catch (error) {

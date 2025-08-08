@@ -157,9 +157,88 @@ export const inventoryAPI = {
 	})
 }
 
+// Actividades y Registros Diarios
+export const activityAPI = {
+	// Obtener todas las actividades
+	getAll: () => authenticatedRequest('/dashboard/activities'),
+	
+	// Obtener actividad por ID
+	getById: (id: string) => authenticatedRequest(`/dashboard/activities/${id}`),
+	
+	// Crear actividad
+	create: (activityData: any) => authenticatedRequest('/dashboard/activities', {
+		method: 'POST',
+		body: JSON.stringify(activityData)
+	}),
+	
+	// Actualizar actividad
+	update: (id: string, activityData: any) => authenticatedRequest(`/dashboard/activities/${id}`, {
+		method: 'PUT',
+		body: JSON.stringify(activityData)
+	}),
+	
+	// Eliminar actividad
+	delete: (id: string) => authenticatedRequest(`/dashboard/activities/${id}`, {
+		method: 'DELETE'
+	}),
+	
+	// ===== REGISTROS DIARIOS =====
+	
+	// Fertigation Day Management
+	addFertigationDay: (activityId: string, dayData: any) => 
+		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		}),
+	
+	updateFertigationDay: (activityId: string, dayIndex: number, dayData: any) => 
+		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		}),
+	
+	deleteFertigationDay: (activityId: string, dayIndex: number) => 
+		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
+			method: 'DELETE'
+		}),
+	
+	// Phytosanitary Day Management
+	addPhytosanitaryDay: (activityId: string, dayData: any) => 
+		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		}),
+	updatePhytosanitaryDay: (activityId: string, dayIndex: number, dayData: any) =>
+		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		}),
+	deletePhytosanitaryDay: (activityId: string, dayIndex: number) =>
+		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
+			method: 'DELETE'
+		}),
+
+	// Water Day Management
+	addWaterDay: (activityId: string, dayData: any) => 
+		authenticatedRequest(`/dashboard/activities/${activityId}/water`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		}),
+	updateWaterDay: (activityId: string, dayIndex: number, dayData: any) =>
+		authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		}),
+	deleteWaterDay: (activityId: string, dayIndex: number) =>
+		authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
+			method: 'DELETE'
+		})
+}
+
 export default {
 	productAPI,
 	supplierAPI,
 	purchaseAPI,
-	inventoryAPI
+	inventoryAPI,
+	activityAPI
 } 

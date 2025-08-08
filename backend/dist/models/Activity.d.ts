@@ -24,21 +24,42 @@ export interface IFertigationData {
     dailyRecords: IDailyFertigationRecord[];
     notes?: string;
 }
+export interface IPhytosanitaryRecord {
+    productId: string;
+    phytosanitaryType: string;
+    phytosanitaryAmount: number;
+    phytosanitaryUnit: string;
+    cost: number;
+    price?: number;
+    unit?: string;
+    brand: string;
+    supplier: string;
+    purchaseDate: string;
+    notes?: string;
+}
+export interface IDailyPhytosanitaryRecord {
+    date: string;
+    phytosanitaries: IPhytosanitaryRecord[];
+    totalCost: number;
+    notes?: string;
+}
 export interface IPhytosanitaryData {
     enabled: boolean;
-    treatmentType?: string;
-    productName?: string;
-    applicationDate?: string;
-    dosage?: string;
+    dailyRecords: IDailyPhytosanitaryRecord[];
+    notes?: string;
+}
+export interface IDailyWaterRecord {
+    date: string;
+    consumption: number;
+    unit: string;
+    cost: number;
     notes?: string;
 }
 export interface IWaterData {
     enabled: boolean;
     waterSource?: string;
     irrigationType?: string;
-    dailyConsumption?: number;
-    waterUnit?: string;
-    cost?: number;
+    dailyRecords: IDailyWaterRecord[];
     notes?: string;
 }
 export interface IEnergyData {
@@ -72,6 +93,8 @@ export interface IActivity extends Document {
     totalCost: number;
     createdAt: Date;
     updatedAt: Date;
+    cycleId?: string;
+    dayNumber?: number;
 }
 declare const Activity: mongoose.Model<IActivity, {}, {}, {}, mongoose.Document<unknown, {}, IActivity, {}> & IActivity & Required<{
     _id: string;

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markAlertAsRead = exports.getAlerts = exports.adjustStock = exports.deleteInventoryItem = exports.updateInventoryItem = exports.createInventoryItem = exports.getInventoryItemById = exports.getInventoryItems = void 0;
+exports.markAlertAsRead = exports.getAlerts = exports.adjustStock = exports.deleteInventoryItem = exports.updateInventoryItem = exports.createInventoryItem = exports.getInventoryItemByProduct = exports.getInventoryItemById = exports.getInventoryItems = void 0;
 const InventoryItem_1 = __importDefault(require("../models/InventoryItem"));
 const InventoryAlert_1 = __importDefault(require("../models/InventoryAlert"));
 const getInventoryItems = async (req, res) => {
@@ -34,6 +34,22 @@ const getInventoryItemById = async (req, res) => {
     }
 };
 exports.getInventoryItemById = getInventoryItemById;
+const getInventoryItemByProduct = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { productId } = req.params;
+        const item = await InventoryItem_1.default.findOne({ productId, userId, active: true });
+        if (!item) {
+            return res.status(404).json({ success: false, message: 'Item de inventario no encontrado para este producto' });
+        }
+        return res.json({ success: true, item });
+    }
+    catch (error) {
+        console.error('Error getting inventory item by product:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.getInventoryItemByProduct = getInventoryItemByProduct;
 const createInventoryItem = async (req, res) => {
     try {
         const userId = req.user.userId;

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getActivityById = exports.deleteActivity = exports.updateActivity = exports.createActivity = exports.getActivities = exports.getAdvancedDashboard = exports.getDashboardStats = void 0;
+exports.deleteWaterDay = exports.updateWaterDay = exports.addWaterDay = exports.deletePhytosanitaryDay = exports.updatePhytosanitaryDay = exports.addPhytosanitaryDay = exports.deleteFertigationDay = exports.updateFertigationDay = exports.addFertigationDay = exports.getActivityById = exports.deleteActivity = exports.updateActivity = exports.createActivity = exports.getActivities = exports.getAdvancedDashboard = exports.getDashboardStats = void 0;
 const Activity_1 = __importDefault(require("../models/Activity"));
 const InventoryProduct_1 = __importDefault(require("../models/InventoryProduct"));
 const getDashboardStats = async (req, res) => {
@@ -372,4 +372,304 @@ const getActivityById = async (req, res) => {
     }
 };
 exports.getActivityById = getActivityById;
+const addFertigationDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const activityId = req.params.activityId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        const { date, fertilizers, waterConsumption, waterUnit, notes, totalCost } = req.body;
+        if (!date || ((!fertilizers || fertilizers.length === 0) && (!waterConsumption || waterConsumption <= 0))) {
+            return res.status(400).json({ success: false, message: 'Debe registrar fertilizantes o consumo de agua' });
+        }
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity) {
+            return res.status(404).json({ success: false, message: 'Actividad no encontrada' });
+        }
+        const newDayRecord = {
+            date,
+            fertilizers: fertilizers || [],
+            waterConsumption: waterConsumption || 0,
+            waterUnit: waterUnit || 'L',
+            totalCost: totalCost || 0,
+            notes
+        };
+        if (!activity.fertigation) {
+            activity.fertigation = { enabled: true, dailyRecords: [] };
+        }
+        activity.fertigation.dailyRecords.push(newDayRecord);
+        activity.fertigation.enabled = true;
+        activity.totalCost = (activity.totalCost || 0) + (newDayRecord.totalCost || 0);
+        await activity.save();
+        return res.status(201).json({
+            success: true,
+            message: 'Día de fertirriego añadido exitosamente',
+            dayRecord: newDayRecord,
+            activity
+        });
+    }
+    catch (error) {
+        console.error('Error adding fertigation day:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.addFertigationDay = addFertigationDay;
+const updateFertigationDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        const { date, fertilizers, waterConsumption, waterUnit, notes, totalCost } = req.body;
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.fertigation) {
+            return res.status(404).json({ success: false, message: 'Actividad o fertirriego no encontrado' });
+        }
+        const dayIndexNum = parseInt(dayIndex);
+        if (dayIndexNum < 0 || dayIndexNum >= activity.fertigation.dailyRecords.length) {
+            return res.status(400).json({ success: false, message: 'Índice de día inválido' });
+        }
+        const oldCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost;
+        activity.fertigation.dailyRecords[dayIndexNum] = {
+            date,
+            fertilizers,
+            waterConsumption: waterConsumption || 0,
+            waterUnit: waterUnit || 'L',
+            totalCost: totalCost || 0,
+            notes
+        };
+        activity.totalCost = (activity.totalCost || 0) - oldCost + (totalCost || 0);
+        await activity.save();
+        return res.json({
+            success: true,
+            message: 'Día de fertirriego actualizado exitosamente',
+            dayRecord: activity.fertigation.dailyRecords[dayIndexNum]
+        });
+    }
+    catch (error) {
+        console.error('Error updating fertigation day:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.updateFertigationDay = updateFertigationDay;
+const deleteFertigationDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.fertigation) {
+            return res.status(404).json({ success: false, message: 'Actividad o fertirriego no encontrado' });
+        }
+        const dayIndexNum = parseInt(dayIndex);
+        if (dayIndexNum < 0 || dayIndexNum >= activity.fertigation.dailyRecords.length) {
+            return res.status(400).json({ success: false, message: 'Índice de día inválido' });
+        }
+        const deletedCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost;
+        activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost);
+        activity.fertigation.dailyRecords.splice(dayIndexNum, 1);
+        if (activity.fertigation.dailyRecords.length === 0) {
+            activity.fertigation.enabled = false;
+        }
+        await activity.save();
+        return res.json({
+            success: true,
+            message: 'Día de fertirriego eliminado exitosamente'
+        });
+    }
+    catch (error) {
+        console.error('Error deleting fertigation day:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.deleteFertigationDay = deleteFertigationDay;
+const addPhytosanitaryDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const activityId = req.params.activityId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        const { date, phytosanitaries, notes, totalCost } = req.body;
+        if (!date || !phytosanitaries || phytosanitaries.length === 0) {
+            return res.status(400).json({ success: false, message: 'Fecha y fitosanitarios son requeridos' });
+        }
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity) {
+            return res.status(404).json({ success: false, message: 'Actividad no encontrada' });
+        }
+        const newDayRecord = {
+            date,
+            phytosanitaries,
+            totalCost: totalCost || 0,
+            notes
+        };
+        if (!activity.phytosanitary) {
+            activity.phytosanitary = { enabled: true, dailyRecords: [] };
+        }
+        activity.phytosanitary.dailyRecords.push(newDayRecord);
+        activity.phytosanitary.enabled = true;
+        activity.totalCost = (activity.totalCost || 0) + (totalCost || 0);
+        await activity.save();
+        return res.status(201).json({
+            success: true,
+            message: 'Día de fitosanitarios añadido exitosamente',
+            dayRecord: newDayRecord,
+            activity
+        });
+    }
+    catch (error) {
+        console.error('Error adding phytosanitary day:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.addPhytosanitaryDay = addPhytosanitaryDay;
+const updatePhytosanitaryDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId)
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        const { date, phytosanitaries, totalCost, notes } = req.body;
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.phytosanitary)
+            return res.status(404).json({ success: false, message: 'Actividad o fitosanitarios no encontrados' });
+        const idx = parseInt(dayIndex);
+        if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length)
+            return res.status(400).json({ success: false, message: 'Índice inválido' });
+        const oldCost = activity.phytosanitary.dailyRecords[idx].totalCost;
+        activity.phytosanitary.dailyRecords[idx] = { date, phytosanitaries, totalCost: totalCost || 0, notes };
+        activity.totalCost = (activity.totalCost || 0) - oldCost + (totalCost || 0);
+        await activity.save();
+        return res.json({ success: true, message: 'Día de fitosanitarios actualizado', dayRecord: activity.phytosanitary.dailyRecords[idx] });
+    }
+    catch (e) {
+        console.error('Error updating phytosanitary day:', e);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.updatePhytosanitaryDay = updatePhytosanitaryDay;
+const deletePhytosanitaryDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId)
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.phytosanitary)
+            return res.status(404).json({ success: false, message: 'Actividad o fitosanitarios no encontrados' });
+        const idx = parseInt(dayIndex);
+        if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length)
+            return res.status(400).json({ success: false, message: 'Índice inválido' });
+        const deletedCost = activity.phytosanitary.dailyRecords[idx].totalCost;
+        activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost);
+        activity.phytosanitary.dailyRecords.splice(idx, 1);
+        if (activity.phytosanitary.dailyRecords.length === 0)
+            activity.phytosanitary.enabled = false;
+        await activity.save();
+        return res.json({ success: true, message: 'Día de fitosanitarios eliminado' });
+    }
+    catch (e) {
+        console.error('Error deleting phytosanitary day:', e);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.deletePhytosanitaryDay = deletePhytosanitaryDay;
+const addWaterDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const activityId = req.params.activityId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        const { date, consumption, unit, cost, notes } = req.body;
+        if (!date || consumption === undefined || consumption <= 0) {
+            return res.status(400).json({ success: false, message: 'Fecha y consumo son requeridos' });
+        }
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity) {
+            return res.status(404).json({ success: false, message: 'Actividad no encontrada' });
+        }
+        if (!activity.water) {
+            activity.water = { enabled: true, dailyRecords: [] };
+        }
+        const newWaterRecord = {
+            date,
+            consumption,
+            unit: unit || 'L',
+            cost: cost || 0,
+            notes
+        };
+        activity.water.dailyRecords.push(newWaterRecord);
+        activity.water.enabled = true;
+        activity.totalCost = (activity.totalCost || 0) + (cost || 0);
+        await activity.save();
+        return res.status(201).json({
+            success: true,
+            message: 'Día de agua añadido exitosamente',
+            waterData: activity.water,
+            activity
+        });
+    }
+    catch (error) {
+        console.error('Error adding water day:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.addWaterDay = addWaterDay;
+const updateWaterDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId)
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        const { date, consumption, unit, cost, notes } = req.body;
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.water)
+            return res.status(404).json({ success: false, message: 'Actividad o agua no encontrados' });
+        const idx = parseInt(dayIndex);
+        if (idx < 0 || idx >= activity.water.dailyRecords.length)
+            return res.status(400).json({ success: false, message: 'Índice inválido' });
+        const oldCost = activity.water.dailyRecords[idx].cost;
+        activity.water.dailyRecords[idx] = { date, consumption, unit, cost: cost || 0, notes };
+        activity.totalCost = (activity.totalCost || 0) - (oldCost || 0) + (cost || 0);
+        await activity.save();
+        return res.json({ success: true, message: 'Día de agua actualizado', dayRecord: activity.water.dailyRecords[idx] });
+    }
+    catch (e) {
+        console.error('Error updating water day:', e);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.updateWaterDay = updateWaterDay;
+const deleteWaterDay = async (req, res) => {
+    try {
+        const userId = req.user?.userId;
+        const { activityId, dayIndex } = req.params;
+        if (!userId)
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        const activity = await Activity_1.default.findOne({ _id: activityId, userId });
+        if (!activity || !activity.water)
+            return res.status(404).json({ success: false, message: 'Actividad o agua no encontrados' });
+        const idx = parseInt(dayIndex);
+        if (idx < 0 || idx >= activity.water.dailyRecords.length)
+            return res.status(400).json({ success: false, message: 'Índice inválido' });
+        const deletedCost = activity.water.dailyRecords[idx].cost;
+        activity.totalCost = Math.max(0, (activity.totalCost || 0) - (deletedCost || 0));
+        activity.water.dailyRecords.splice(idx, 1);
+        if (activity.water.dailyRecords.length === 0)
+            activity.water.enabled = false;
+        await activity.save();
+        return res.json({ success: true, message: 'Día de agua eliminado' });
+    }
+    catch (e) {
+        console.error('Error deleting water day:', e);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+exports.deleteWaterDay = deleteWaterDay;
 //# sourceMappingURL=dashboardController.js.map

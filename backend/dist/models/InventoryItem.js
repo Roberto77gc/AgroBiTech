@@ -42,7 +42,7 @@ const InventoryItemSchema = new mongoose_1.Schema({
     },
     productId: {
         type: String,
-        required: true
+        required: false
     },
     productName: {
         type: String,

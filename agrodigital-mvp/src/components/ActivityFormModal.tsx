@@ -8,11 +8,10 @@ import {
 	Leaf,
 	Zap,
 	Droplets,
-	Shield,
 	Plus,
 	Info
 } from 'lucide-react'
-import type { FertigationData, PhytosanitaryData, WaterData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority, ProductPrice, Supplier, ProductPurchase } from '../types'
+import type { FertigationData, PhytosanitaryData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority, ProductPrice, Supplier, ProductPurchase } from '../types'
 import { productAPI, supplierAPI, purchaseAPI, inventoryAPI } from '../services/api'
 
 interface ActivityFormModalProps {
@@ -50,10 +49,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 		
 		phytosanitary: {
 			enabled: false,
-			treatmentType: '',
-			productName: '',
-			applicationDate: '',
-			dosage: '',
+			dailyRecords: [],
 			notes: ''
 		} as PhytosanitaryData,
 		
@@ -61,11 +57,9 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 			enabled: false,
 			waterSource: '',
 			irrigationType: '',
-			dailyConsumption: 0,
-			waterUnit: 'L',
-			cost: 0,
+			dailyRecords: [],
 			notes: ''
-		} as WaterData,
+		},
 		
 		energy: {
 			enabled: false,
@@ -135,6 +129,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 		}
 
 		// Validar stock de fitosanitarios
+		// TODO: Implementar validación para fitosanitarios con nueva estructura dailyRecords
+		/*
 		if (formData.phytosanitary.enabled && formData.phytosanitary.productName) {
 			const phytosanitaryProduct = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => 
 				p.name === formData.phytosanitary.productName && p.type === 'phytosanitary'
@@ -146,17 +142,17 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 					
 					if (inventoryItem) {
 						if (dosage > inventoryItem.currentStock) {
-							newErrors.phytosanitary = 
-								`Stock insuficiente de ${phytosanitaryProduct.name}. Disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`
+							newErrors.phytosanitary = `Stock insuficiente. Disponible: ${inventoryItem.currentStock} ${inventoryItem.unit}`
 						}
 					} else {
-						newErrors.phytosanitary = `Producto ${phytosanitaryProduct.name} no disponible en inventario`
+						newErrors.phytosanitary = 'Producto no disponible en inventario'
 					}
 				} catch (error) {
-					newErrors.phytosanitary = `Error verificando inventario de ${phytosanitaryProduct.name}`
+					newErrors.phytosanitary = 'Error verificando inventario'
 				}
 			}
 		}
+		*/
 
 		setErrors(newErrors)
 		return Object.keys(newErrors).length === 0
@@ -207,6 +203,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 			}
 			
 			// Costos de fitosanitarios y consumo
+			// TODO: Implementar cálculo de costos para fitosanitarios con nueva estructura dailyRecords
+			/*
 			if (formData.phytosanitary.enabled && formData.phytosanitary.productName) {
 				const phytosanitaryProduct = Array.isArray(availableFertilizers) ? availableFertilizers.find(p => 
 					p.name === formData.phytosanitary.productName && p.type === 'phytosanitary'
@@ -233,9 +231,10 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 					}
 				}
 			}
+			*/
 			
 			// Costos de agua y energía
-			totalCost += (formData.water.cost || 0) + (formData.energy.cost || 0)
+			totalCost += (formData.energy.cost || 0)
 			
 			const activityData = {
 				...formData,
@@ -269,10 +268,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 				
 				phytosanitary: {
 					enabled: false,
-					treatmentType: '',
-					productName: '',
-					applicationDate: '',
-					dosage: '',
+					dailyRecords: [],
 					notes: ''
 				},
 				
@@ -280,9 +276,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 					enabled: false,
 					waterSource: '',
 					irrigationType: '',
-					dailyConsumption: 0,
-					waterUnit: 'L',
-					cost: 0,
+					dailyRecords: [],
 					notes: ''
 				},
 				
@@ -1311,6 +1305,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 							)}
 						</div>
                         						{/* Tratamientos Fitosanitarios */}
+						{/* TODO: Implementar nueva interfaz para fitosanitarios con dailyRecords */}
+						{/*
 						<div className={`border rounded-lg p-4 ${
 							isDarkMode ? 'border-gray-600' : 'border-gray-200'
 						}`}>
@@ -1434,6 +1430,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 								</div>
 							)}
 						</div>
+						*/}
 						
 						{/* Agua */}
 						<div className={`border rounded-lg p-4 ${
@@ -1502,84 +1499,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 									</div>
 									
 									<div className="flex space-x-2">
-										<div className="flex-1">
-											<label className={`block text-sm font-medium mb-2 ${
-												isDarkMode ? 'text-gray-300' : 'text-gray-700'
-											}`}>
-												Consumo Diario
-											</label>
-											<input
-												type="number"
-												step="0.01"
-												value={formData.water.dailyConsumption}
-												onChange={(e) => handleResourceChange('water', 'dailyConsumption', parseFloat(e.target.value) || 0)}
-												className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-													isDarkMode 
-														? 'bg-gray-700 border-gray-600 text-white' 
-														: 'bg-white border-gray-300 text-gray-900'
-												}`}
-												placeholder="0.00"
-											/>
-										</div>
-										<div className="w-20">
-											<label className={`block text-sm font-medium mb-2 ${
-												isDarkMode ? 'text-gray-300' : 'text-gray-700'
-											}`}>
-												Unidad
-											</label>
-											<select
-												value={formData.water.waterUnit}
-												onChange={(e) => handleResourceChange('water', 'waterUnit', e.target.value)}
-												className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-													isDarkMode 
-														? 'bg-gray-700 border-gray-600 text-white' 
-														: 'bg-white border-gray-300 text-gray-900'
-												}`}
-											>
-												<option value="L">L</option>
-												<option value="m3">m³</option>
-												<option value="gal">gal</option>
-											</select>
-										</div>
-									</div>
-									
-									<div>
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Coste Diario (€)
-										</label>
-										<input
-											type="number"
-											step="0.01"
-											value={formData.water.cost}
-											onChange={(e) => handleResourceChange('water', 'cost', parseFloat(e.target.value) || 0)}
-											className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-											placeholder="0.00"
-										/>
-									</div>
-									
-									<div className="md:col-span-2">
-										<label className={`block text-sm font-medium mb-2 ${
-											isDarkMode ? 'text-gray-300' : 'text-gray-700'
-										}`}>
-											Notas
-										</label>
-										<textarea
-											value={formData.water.notes}
-											onChange={(e) => handleResourceChange('water', 'notes', e.target.value)}
-											rows={2}
-											className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-												isDarkMode 
-													? 'bg-gray-700 border-gray-600 text-white' 
-													: 'bg-white border-gray-300 text-gray-900'
-											}`}
-											placeholder="Observaciones sobre gestión del agua..."
-										/>
+										{/* Campos de consumo/coste de agua se gestionan en los modales diarios, no aquí */}
 									</div>
 								</div>
 							)}

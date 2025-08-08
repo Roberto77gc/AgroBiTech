@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
-import { X, Calendar, MapPin, Cloud, FileText, DollarSign, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
-import type { Activity, DailyFertigationRecord } from '../types'
+import { X, Calendar, MapPin, Cloud, FileText, Euro, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
+import type { Activity, DailyFertigationRecord, DailyPhytosanitaryRecord } from '../types'
 import FertigationDayModal from './FertigationDayModal'
 import PhytosanitaryDayModal from './PhytosanitaryDayModal'
 import WaterDayModal from './WaterDayModal'
+import CostBreakdownModal from './CostBreakdownModal'
+import { activityAPI } from '../services/api'
 
 interface ActivityDetailModalProps {
 	isOpen: boolean
@@ -18,10 +20,28 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 	activity, 
 	isDarkMode 
 }) => {
+	const [activityState, setActivityState] = useState<Activity>(activity)
 	const [showFertigationDayModal, setShowFertigationDayModal] = useState(false)
-	const [selectedDay, setSelectedDay] = useState<DailyFertigationRecord | undefined>(undefined)
-	const [showPhytosanitaryDayModal, setShowPhytosanitaryDayModal] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<DailyFertigationRecord | undefined>(undefined)
+  const [selectedFertigationIndex, setSelectedFertigationIndex] = useState<number | null>(null)
+  const [showPhytosanitaryDayModal, setShowPhytosanitaryDayModal] = useState(false)
+  const [selectedPhytoDay, setSelectedPhytoDay] = useState<DailyPhytosanitaryRecord | undefined>(undefined)
+  const [selectedPhytoIndex, setSelectedPhytoIndex] = useState<number | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [confirmState, setConfirmState] = useState<{ open: boolean; message: string; onConfirm: () => Promise<void> | void } | null>(null)
 	const [showWaterDayModal, setShowWaterDayModal] = useState(false)
+	const [showCostBreakdownModal, setShowCostBreakdownModal] = useState(false)
+	const [costBreakdownData, setCostBreakdownData] = useState<any>(null)
+
+	const reloadActivity = async () => {
+		try {
+			const res = await activityAPI.getById(activity._id)
+			if (res?.activity) setActivityState(res.activity)
+		} catch (e) {
+			console.error('Error reloading activity:', e)
+		}
+	}
+
 	const getCropTypeColor = (cropType: string) => {
 		const colors: { [key: string]: string } = {
 			tomate: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -61,60 +81,145 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 		}).format(amount)
 	}
 
-	const handleAddFertigationDay = () => {
-		setSelectedDay(undefined)
-		setShowFertigationDayModal(true)
-	}
+  const handleAddFertigationDay = () => {
+    setSelectedDay(undefined)
+    setSelectedFertigationIndex(null)
+    setShowFertigationDayModal(true)
+  }
 
-	const handleEditFertigationDay = (day: DailyFertigationRecord) => {
-		setSelectedDay(day)
-		setShowFertigationDayModal(true)
-	}
+  const handleEditFertigationDay = (day: DailyFertigationRecord, index: number) => {
+    setSelectedDay(day)
+    setSelectedFertigationIndex(index)
+    setShowFertigationDayModal(true)
+  }
 
-	const handleDeleteFertigationDay = (index: number) => {
-		if (confirm('¿Estás seguro de que quieres eliminar este día de fertirriego?')) {
-			// Aquí implementarías la lógica para eliminar el día
-			console.log('Eliminar día:', index)
-		}
-	}
+  const handleDeleteFertigationDay = async (index: number) => {
+    setConfirmState({
+      open: true,
+      message: '¿Estás seguro de eliminar este día de fertirriego?',
+      onConfirm: async () => {
+        try {
+          const response = await activityAPI.deleteFertigationDay(activityState._id, index)
+          if (response.success) {
+            await reloadActivity()
+            setToast({ type: 'success', message: 'Día de fertirriego eliminado correctamente' })
+          } else {
+            setToast({ type: 'error', message: 'No se pudo eliminar el día de fertirriego' })
+          }
+        } catch (error) {
+          console.error('Error eliminando día de fertirriego:', error)
+          setToast({ type: 'error', message: 'Error al eliminar el día de fertirriego' })
+        }
+      }
+    })
+  }
 
-	const handleFertigationDaySubmit = async (dayData: DailyFertigationRecord) => {
-		try {
-			// Aquí implementarías la lógica para guardar/actualizar el día
-			console.log('Guardar día:', dayData)
-			
-			// Por ahora, solo cerramos el modal
-			setShowFertigationDayModal(false)
-			setSelectedDay(undefined)
-		} catch (error) {
-			console.error('Error saving fertigation day:', error)
-		}
-	}
+  const handleFertigationDaySubmit = async (dayData: DailyFertigationRecord) => {
+    try {
+      let response
+      if (selectedFertigationIndex !== null) {
+        response = await activityAPI.updateFertigationDay(activityState._id, selectedFertigationIndex, dayData)
+      } else {
+        response = await activityAPI.addFertigationDay(activityState._id, dayData)
+      }
+      if (!response.success) {
+        setToast({ type: 'error', message: 'No se pudo guardar el día de fertirriego' })
+      }
+      setShowFertigationDayModal(false)
+      setSelectedDay(undefined)
+      setSelectedFertigationIndex(null)
+      await reloadActivity()
+      setToast({ type: 'success', message: 'Día de fertirriego guardado correctamente' })
+    } catch (error) {
+      console.error('Error saving fertigation day:', error)
+    }
+  }
 
-	const handleAddPhytosanitaryDay = () => {
-		setShowPhytosanitaryDayModal(true)
-	}
+  const handleAddPhytosanitaryDay = () => {
+    setSelectedPhytoDay(undefined)
+    setSelectedPhytoIndex(null)
+    setShowPhytosanitaryDayModal(true)
+  }
+
+  const handleDeletePhytosanitaryDay = async (index: number) => {
+    setConfirmState({
+      open: true,
+      message: '¿Estás seguro de eliminar este día de fitosanitarios?',
+      onConfirm: async () => {
+        try {
+          const response = await activityAPI.deletePhytosanitaryDay(activityState._id, index)
+          if (response.success) {
+            await reloadActivity()
+            setToast({ type: 'success', message: 'Día de fitosanitarios eliminado correctamente' })
+          } else {
+            setToast({ type: 'error', message: 'No se pudo eliminar el día de fitosanitarios' })
+          }
+        } catch (error) {
+          console.error('Error eliminando día de fitosanitarios:', error)
+          setToast({ type: 'error', message: 'Error al eliminar el día de fitosanitarios' })
+        }
+      }
+    })
+  }
+
+  const handlePhytosanitaryDaySubmit = async (dayData: any) => {
+    try {
+      let response
+      if (selectedPhytoIndex !== null) {
+        response = await activityAPI.updatePhytosanitaryDay(activityState._id, selectedPhytoIndex, dayData)
+      } else {
+        response = await activityAPI.addPhytosanitaryDay(activityState._id, dayData)
+      }
+      if (!response.success) {
+        setToast({ type: 'error', message: 'No se pudo guardar el día de fitosanitarios' })
+      }
+      setShowPhytosanitaryDayModal(false)
+      setSelectedPhytoDay(undefined)
+      setSelectedPhytoIndex(null)
+      await reloadActivity()
+      setToast({ type: 'success', message: 'Día de fitosanitarios guardado correctamente' })
+    } catch (error) {
+      console.error('Error saving phytosanitary day:', error)
+    }
+  }
 
 	const handleAddWaterDay = () => {
 		setShowWaterDayModal(true)
 	}
 
-	const handlePhytosanitaryDaySubmit = async (dayData: any) => {
-		try {
-			console.log('Guardar día de fitosanitarios:', dayData)
-			setShowPhytosanitaryDayModal(false)
-		} catch (error) {
-			console.error('Error saving phytosanitary day:', error)
-		}
-	}
-
 	const handleWaterDaySubmit = async (dayData: any) => {
 		try {
-			console.log('Guardar día de agua:', dayData)
+			const response = await activityAPI.addWaterDay(activityState._id, dayData)
+			if (!response.success) {
+				alert('Error al guardar día de agua: ' + response.message)
+			}
 			setShowWaterDayModal(false)
+			await reloadActivity()
 		} catch (error) {
 			console.error('Error saving water day:', error)
 		}
+	}
+
+	const handleShowCostBreakdown = (record: DailyFertigationRecord) => {
+		const breakdownData = {
+			fertilizers: record.fertilizers.map(f => ({
+				name: f.fertilizerType,
+				amount: f.fertilizerAmount,
+				unit: f.unit || 'kg',
+				price: f.price || 0,
+				cost: f.fertilizerAmount * (f.price || 0)
+			})),
+			phytosanitaries: [],
+			water: {
+				consumption: record.waterConsumption,
+				unit: record.waterUnit,
+				price: 0,
+				cost: 0
+			},
+			others: []
+		}
+		setCostBreakdownData(breakdownData)
+		setShowCostBreakdownModal(true)
 	}
 
 	if (!isOpen) return null
@@ -136,11 +241,11 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					isDarkMode ? 'border-gray-700' : 'border-gray-200'
 				}`}>
 					<div className="flex items-center space-x-3">
-						<span className={`px-3 py-1 text-sm font-medium rounded-full ${getCropTypeColor(activity.cropType)}`}>
-							{activity.cropType.charAt(0).toUpperCase() + activity.cropType.slice(1)}
+						<span className={`px-3 py-1 text-sm font-medium rounded-full ${getCropTypeColor(activityState.cropType)}`}>
+							{activityState.cropType.charAt(0).toUpperCase() + activityState.cropType.slice(1)}
 						</span>
 						<h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-							{activity.name}
+							{activityState.name}
 						</h2>
 					</div>
 					<button
@@ -170,12 +275,12 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 										Tipo de Cultivo
 									</p>
 									<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-										{activity.cropType.charAt(0).toUpperCase() + activity.cropType.slice(1)}
+										{activityState.cropType.charAt(0).toUpperCase() + activityState.cropType.slice(1)}
 									</p>
 								</div>
 							</div>
 
-							{activity.plantCount && activity.plantCount > 0 && (
+							{activityState.plantCount && activityState.plantCount > 0 && (
 								<div className="flex items-center space-x-3">
 									<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
 										<Leaf className="h-5 w-5 text-green-500" />
@@ -185,7 +290,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 											Número de Plantas
 										</p>
 										<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-											{activity.plantCount.toLocaleString()}
+											{activityState.plantCount.toLocaleString()}
 										</p>
 									</div>
 								</div>
@@ -200,12 +305,12 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 										Extensión
 									</p>
 									<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-										{activity.area} {activity.areaUnit}
+										{activityState.area} {activityState.areaUnit}
 									</p>
 								</div>
 							</div>
 
-							{activity.transplantDate && (
+							{activityState.transplantDate && (
 								<div className="flex items-center space-x-3">
 									<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
 										<Calendar className="h-5 w-5 text-blue-500" />
@@ -215,7 +320,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 											Fecha de Transplante
 										</p>
 										<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-											{formatDate(activity.transplantDate)}
+											{formatDate(activityState.transplantDate)}
 										</p>
 									</div>
 								</div>
@@ -249,9 +354,9 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								</button>
 							</div>
 
-							{activity.fertigation?.dailyRecords && activity.fertigation.dailyRecords.length > 0 ? (
+							{activityState.fertigation?.dailyRecords && activityState.fertigation.dailyRecords.length > 0 ? (
 								<div className="space-y-3">
-									{activity.fertigation.dailyRecords.map((record, index) => (
+									{activityState.fertigation.dailyRecords.map((record, index) => (
 										<div
 											key={index}
 											className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}
@@ -261,8 +366,8 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 													{new Date(record.date).toLocaleDateString('es-ES')} - {record.fertilizers.length} fertilizante(s)
 												</span>
 												<div className="flex space-x-2">
-													<button
-														onClick={() => handleEditFertigationDay(record)}
+                                                  <button
+                                                    onClick={() => handleEditFertigationDay(record, index)}
 														className="text-blue-500 hover:text-blue-700 transition-colors"
 													>
 														<Edit className="h-4 w-4" />
@@ -272,6 +377,12 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 														className="text-red-500 hover:text-red-700 transition-colors"
 													>
 														<Trash2 className="h-4 w-4" />
+													</button>
+													<button
+														onClick={() => handleShowCostBreakdown(record)}
+														className="text-purple-500 hover:text-purple-700 transition-colors"
+													>
+														<Euro className="h-4 w-4" />
 													</button>
 												</div>
 											</div>
@@ -327,9 +438,52 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								</button>
 							</div>
 
-							<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-								No hay registros de fitosanitarios
-							</p>
+							{activityState.phytosanitary?.dailyRecords && activityState.phytosanitary.dailyRecords.length > 0 ? (
+								<div className="space-y-3">
+									{activityState.phytosanitary.dailyRecords.map((record, index) => (
+										<div
+											key={index}
+											className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}
+										>
+											<div className="flex items-center justify-between mb-2">
+												<span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+													{new Date(record.date).toLocaleDateString('es-ES')} - {record.phytosanitaries.length} producto(s)
+												</span>
+												<div className="flex space-x-2">
+                                                  <button
+                                                    onClick={() => { setSelectedPhytoDay(record as unknown as DailyPhytosanitaryRecord); setSelectedPhytoIndex(index); setShowPhytosanitaryDayModal(true) }}
+														className="text-blue-500 hover:text-blue-700 transition-colors"
+													>
+														<Edit className="h-4 w-4" />
+													</button>
+													<button
+														onClick={() => handleDeletePhytosanitaryDay(index)}
+														className="text-red-500 hover:text-red-700 transition-colors"
+													>
+														<Trash2 className="h-4 w-4" />
+													</button>
+												</div>
+											</div>
+											{record.phytosanitaries.map((product, pIndex) => (
+												<div key={pIndex} className="ml-4 mb-2">
+													<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+														<strong>Producto {pIndex + 1}:</strong> {product.phytosanitaryType} - {product.phytosanitaryAmount} {product.phytosanitaryUnit}
+													</div>
+												</div>
+											))}
+											{record.notes && (
+												<div className={`text-sm ml-4 mt-2 italic ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+													"{record.notes}"
+												</div>
+											)}
+										</div>
+									))}
+								</div>
+							) : (
+								<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+									No hay registros de fitosanitarios
+								</p>
+							)}
 						</div>
 
 						{/* Agua */}
@@ -352,16 +506,20 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								</button>
 							</div>
 
-							{activity.water && (activity.water as any).consumption > 0 ? (
-								<div className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}>
-									<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-										<strong>Consumo:</strong> {(activity.water as any).consumption} {(activity.water as any).unit}
-									</div>
-									{(activity.water as any).cost > 0 && (
-										<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-											<strong>Coste:</strong> {(activity.water as any).cost.toFixed(2)}€
+							{activityState.water?.dailyRecords && activityState.water.dailyRecords.length > 0 ? (
+								<div className="space-y-3">
+									{activityState.water.dailyRecords.map((record, index) => (
+										<div key={index} className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}>
+											<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+												<strong>Consumo:</strong> {record.consumption} {record.unit}
+											</div>
+											{record.cost > 0 && (
+												<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+													<strong>Coste:</strong> {record.cost.toFixed(2)}€
+												</div>
+											)}
 										</div>
-									)}
+									))}
 								</div>
 							) : (
 								<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -372,13 +530,13 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					</div>
 
 					{/* Fotos */}
-					{activity.photos && activity.photos.length > 0 && (
+					{activityState.photos && activityState.photos.length > 0 && (
 						<div>
 							<h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
 								Fotografías
 							</h3>
 							<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-								{activity.photos.map((photo, index) => (
+								{activityState.photos.map((photo, index) => (
 									<div key={index} className="relative">
 										<img
 											src={photo}
@@ -404,21 +562,21 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 										Fecha de Creación
 									</p>
 									<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-										{formatDate(activity.createdAt)}
+										{formatDate(activityState.createdAt)}
 									</p>
 								</div>
 							</div>
 
 							<div className="flex items-center space-x-3">
 								<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-									<DollarSign className="h-5 w-5 text-green-500" />
+									<Euro className="h-5 w-5 text-green-500" />
 								</div>
 								<div>
 									<p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
 										Coste Total
 									</p>
 									<p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-										{formatCurrency(activity.totalCost)}
+										{formatCurrency(activityState.totalCost)}
 									</p>
 								</div>
 							</div>
@@ -426,7 +584,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 
 						{/* Ubicación y Clima */}
 						<div className="space-y-4">
-							{activity.location && (
+							{activityState.location && (
 								<div className="flex items-center space-x-3">
 									<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
 										<MapPin className="h-5 w-5 text-red-500" />
@@ -436,13 +594,13 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 											Ubicación
 										</p>
 										<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-											{activity.location}
+											{activityState.location}
 										</p>
 									</div>
 								</div>
 							)}
 
-							{activity.weather && (
+							{activityState.weather && (
 								<div className="flex items-center space-x-3">
 									<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
 										<Cloud className="h-5 w-5 text-cyan-500" />
@@ -452,7 +610,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 											Clima
 										</p>
 										<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-											{activity.weather}
+											{activityState.weather}
 										</p>
 									</div>
 								</div>
@@ -461,7 +619,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					</div>
 
 					{/* Productos Consumidos */}
-					{activity.consumedProducts && activity.consumedProducts.length > 0 && (
+					{activityState.consumedProducts && activityState.consumedProducts.length > 0 && (
 						<div>
 							<h3 className={`text-lg font-semibold mb-3 flex items-center space-x-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
 								<Package className="h-5 w-5 text-blue-600" />
@@ -469,7 +627,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 							</h3>
 							<div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
 								<div className="space-y-3">
-									{activity.consumedProducts.map((product, index) => (
+									{activityState.consumedProducts.map((product, index) => (
 										<div key={index} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-600">
 											<div className="flex items-center space-x-3">
 												<div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-900' : 'bg-blue-100'}`}>
@@ -492,7 +650,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					)}
 
 					{/* Notas */}
-					{activity.notes && (
+					{activityState.notes && (
 						<div>
 							<h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
 								Observaciones Generales
@@ -501,7 +659,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								<div className="flex items-start space-x-3">
 									<FileText className="h-5 w-5 text-gray-400 mt-0.5" />
 									<p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-										{activity.notes}
+										{activityState.notes}
 									</p>
 								</div>
 							</div>
@@ -513,12 +671,12 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
 							<div>
 								<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-									Creado: {formatDate(activity.createdAt)}
+									Creado: {formatDate(activityState.createdAt)}
 								</p>
 							</div>
 							<div>
 								<p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-									Actualizado: {formatDate(activity.updatedAt)}
+									Actualizado: {formatDate(activityState.updatedAt)}
 								</p>
 							</div>
 						</div>
@@ -547,17 +705,18 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						}}
 						onSubmit={handleFertigationDaySubmit}
 						existingDay={selectedDay}
-						activityName={activity.name}
+						activityName={activityState.name}
 						isDarkMode={isDarkMode}
 					/>
 				)}
 
 				{/* Phytosanitary Day Modal */}
-				{showPhytosanitaryDayModal && (
+          {showPhytosanitaryDayModal && (
 					<PhytosanitaryDayModal
 						isOpen={showPhytosanitaryDayModal}
-						onClose={() => setShowPhytosanitaryDayModal(false)}
-						activityName={activity.name}
+              onClose={() => setShowPhytosanitaryDayModal(false)}
+              existingDay={selectedPhytoDay}
+						activityName={activityState.name}
 						isDarkMode={isDarkMode}
 						onSubmit={handlePhytosanitaryDaySubmit}
 					/>
@@ -568,12 +727,45 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					<WaterDayModal
 						isOpen={showWaterDayModal}
 						onClose={() => setShowWaterDayModal(false)}
-						activityName={activity.name}
+						activityName={activityState.name}
 						isDarkMode={isDarkMode}
 						onSubmit={handleWaterDaySubmit}
 					/>
 				)}
-			</div>
+
+				{/* Cost Breakdown Modal */}
+				{showCostBreakdownModal && costBreakdownData && (
+					<CostBreakdownModal
+						isOpen={showCostBreakdownModal}
+						onClose={() => setShowCostBreakdownModal(false)}
+						activityName={activityState.name}
+						date={new Date().toISOString().split('T')[0]}
+						costs={costBreakdownData}
+						isDarkMode={isDarkMode}
+					/>
+				)}
+        {/* Toast */}
+        {toast && (
+          <div className="absolute top-4 right-4 z-50">
+            <div className={`px-4 py-3 rounded-lg shadow ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+              <p>{toast.message}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Dialog */}
+        {confirmState?.open && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className={`w-full max-w-md rounded-xl p-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+              <p className="mb-4">{confirmState.message}</p>
+              <div className="flex justify-end space-x-2">
+                <button onClick={() => setConfirmState(null)} className={`px-4 py-2 rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>Cancelar</button>
+                <button onClick={async () => { await confirmState.onConfirm(); setConfirmState(null) }} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 		</div>
 	)
 }

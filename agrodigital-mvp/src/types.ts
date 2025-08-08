@@ -45,7 +45,7 @@ export interface ProductPrice {
 	_id: string
 	userId: string
 	name: string
-	type: 'fertilizer' | 'water' | 'phytosanitary'
+	type: 'fertilizer' | 'water' | 'phytosanitary' | 'others'
 	pricePerUnit: number
 	price?: number // Alias para pricePerUnit
 	unit: string
@@ -195,11 +195,27 @@ export interface FertilizerRecord {
 	notes?: string
 }
 
+export interface OtherExpenseRecord {
+	expenseType: string
+	expenseAmount: number
+	expenseUnit: string
+	cost: number
+	productId?: string // ID del producto de la base de datos
+	price?: number // Precio por unidad
+	unit?: string // Unidad del producto
+	pricePerUnit?: number // Precio por unidad para mostrar en resumen
+	brand?: string // Marca del producto
+	supplier?: string // Proveedor del producto
+	purchaseDate?: string // Fecha de compra
+	notes?: string
+}
+
 export interface DailyFertigationRecord {
 	date: string
 	fertilizers: FertilizerRecord[]
 	waterConsumption: number
 	waterUnit: string
+	otherExpenses?: OtherExpenseRecord[] // Gastos adicionales
 	totalCost: number
 	notes?: string
 }
@@ -212,10 +228,28 @@ export interface FertigationData {
 
 export interface PhytosanitaryData {
 	enabled: boolean
-	treatmentType?: string
-	productName?: string
-	applicationDate?: string
-	dosage?: string
+	dailyRecords: DailyPhytosanitaryRecord[]
+	notes?: string
+}
+
+export interface PhytosanitaryRecord {
+	productId: string
+	phytosanitaryType: string
+	phytosanitaryAmount: number
+	phytosanitaryUnit: string
+	cost: number
+	price?: number
+	unit?: string
+	brand?: string
+	supplier?: string
+	purchaseDate?: string
+	notes?: string
+}
+
+export interface DailyPhytosanitaryRecord {
+	date: string
+	phytosanitaries: PhytosanitaryRecord[]
+	totalCost: number
 	notes?: string
 }
 
@@ -223,9 +257,15 @@ export interface WaterData {
 	enabled: boolean
 	waterSource?: string
 	irrigationType?: string
-	dailyConsumption?: number
-	waterUnit?: string
-	cost?: number
+	dailyRecords: DailyWaterRecord[]
+	notes?: string
+}
+
+export interface DailyWaterRecord {
+	date: string
+	consumption: number
+	unit: string
+	cost: number
 	notes?: string
 }
 

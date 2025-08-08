@@ -127,31 +127,114 @@ const FertigationDataSchema = new mongoose_1.Schema({
         maxlength: 500
     }
 }, { _id: false });
+const PhytosanitaryRecordSchema = new mongoose_1.Schema({
+    productId: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    phytosanitaryType: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    phytosanitaryAmount: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    phytosanitaryUnit: {
+        type: String,
+        required: true,
+        enum: ['L', 'ml', 'kg', 'g']
+    },
+    cost: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    price: {
+        type: Number,
+        min: 0
+    },
+    unit: {
+        type: String,
+        trim: true
+    },
+    brand: {
+        type: String,
+        trim: true
+    },
+    supplier: {
+        type: String,
+        trim: true
+    },
+    purchaseDate: {
+        type: String,
+        trim: true
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    }
+}, { _id: false });
+const DailyPhytosanitaryRecordSchema = new mongoose_1.Schema({
+    date: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    phytosanitaries: {
+        type: [PhytosanitaryRecordSchema],
+        default: []
+    },
+    totalCost: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    }
+}, { _id: false });
+const DailyWaterRecordSchema = new mongoose_1.Schema({
+    date: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    consumption: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    unit: {
+        type: String,
+        required: true,
+        enum: ['L', 'm3']
+    },
+    cost: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    }
+}, { _id: false });
 const PhytosanitaryDataSchema = new mongoose_1.Schema({
     enabled: {
         type: Boolean,
         default: false
     },
-    treatmentType: {
-        type: String,
-        trim: true
-    },
-    productName: {
-        type: String,
-        trim: true
-    },
-    applicationDate: {
-        type: String,
-        validate: {
-            validator: function (v) {
-                return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);
-            },
-            message: 'Application date must be in YYYY-MM-DD format'
-        }
-    },
-    dosage: {
-        type: String,
-        trim: true
+    dailyRecords: {
+        type: [DailyPhytosanitaryRecordSchema],
+        default: []
     },
     notes: {
         type: String,
@@ -172,17 +255,9 @@ const WaterDataSchema = new mongoose_1.Schema({
         type: String,
         trim: true
     },
-    dailyConsumption: {
-        type: Number,
-        min: 0
-    },
-    waterUnit: {
-        type: String,
-        enum: ['L', 'm3', 'gal']
-    },
-    cost: {
-        type: Number,
-        min: 0
+    dailyRecords: {
+        type: [DailyWaterRecordSchema],
+        default: []
     },
     notes: {
         type: String,
@@ -315,6 +390,14 @@ const ActivitySchema = new mongoose_1.Schema({
         type: Number,
         required: true,
         min: 0
+    },
+    cycleId: {
+        type: String,
+        trim: true
+    },
+    dayNumber: {
+        type: Number,
+        min: 1
     }
 }, {
     timestamps: true,

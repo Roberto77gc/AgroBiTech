@@ -20,7 +20,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	const [products, setProducts] = useState<ProductPrice[]>([])
 	const [suppliers, setSuppliers] = useState<Supplier[]>([])
 	const [searchTerm, setSearchTerm] = useState('')
-	const [selectedProductType, setSelectedProductType] = useState<'all' | 'fertilizer' | 'water'>('all')
+	const [selectedProductType, setSelectedProductType] = useState<'all' | 'fertilizer' | 'phytosanitary' | 'water'>('all')
 	const [showAddForm, setShowAddForm] = useState(false)
 	const [editingPurchase, setEditingPurchase] = useState<ProductPurchase | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
@@ -272,7 +272,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 						<div className="flex gap-2">
 							<select
 								value={selectedProductType}
-								onChange={(e) => setSelectedProductType(e.target.value as 'all' | 'fertilizer' | 'water')}
+								onChange={(e) => setSelectedProductType(e.target.value as 'all' | 'fertilizer' | 'phytosanitary' | 'water')}
 								className={`px-4 py-2 border rounded-lg transition-colors ${
 									isDarkMode 
 										? 'bg-gray-700 border-gray-600 text-white' 
@@ -281,6 +281,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 							>
 								<option value="all">Todos los productos</option>
 								<option value="fertilizer">Fertilizantes</option>
+								<option value="phytosanitary">Fitosanitarios</option>
 								<option value="water">Agua</option>
 							</select>
 							<button
@@ -322,7 +323,12 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 											<option value="">Seleccionar producto...</option>
 											{products.map((product) => (
 												<option key={product._id} value={product._id}>
-													{product.name} ({product.type === 'fertilizer' ? 'Fertilizante' : 'Agua'})
+													{product.name} ({
+														product.type === 'fertilizer' ? 'Fertilizante' : 
+														product.type === 'phytosanitary' ? 'Fitosanitario' : 
+														product.type === 'water' ? 'Agua' : 
+														product.type
+													})
 												</option>
 											))}
 										</select>
