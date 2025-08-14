@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Edit, Trash2, Package, Search } from 'lucide-react'
 import type { ProductPrice } from '../types'
+import { formatCurrencyEUR } from '../utils/format'
 import { productAPI } from '../services/api'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
 
 interface ProductManagementModalProps {
 	isOpen: boolean
@@ -15,6 +16,7 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 	onClose,
 	isDarkMode
 }) => {
+  const { success: toastSuccess, error: toastError } = useToast()
 	const [products, setProducts] = useState<ProductPrice[]>([])
 	const [filteredProducts, setFilteredProducts] = useState<ProductPrice[]>([])
 	const [selectedType, setSelectedType] = useState<'all' | 'fertilizer' | 'water' | 'phytosanitary' | 'others'>('all')
@@ -56,14 +58,14 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 		try {
 			setIsLoading(true)
 			const response = await productAPI.getAll()
-			if (response.success) {
-				setProducts(response.products)
-			} else {
-				toast.error('Error al cargar productos')
-			}
+            if (response.success) {
+                setProducts(response.products)
+            } else {
+                toastError('Error al cargar productos')
+            }
 		} catch (error) {
 			console.error('Error loading products:', error)
-			toast.error('Error al cargar productos')
+            toastError('Error al cargar productos')
 		} finally {
 			setIsLoading(false)
 		}
@@ -80,8 +82,8 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		
-		if (!formData.name || !formData.pricePerUnit || !formData.unit) {
-			toast.error('Por favor completa todos los campos obligatorios')
+        if (!formData.name || !formData.pricePerUnit || !formData.unit) {
+            toastError('Por favor completa todos los campos obligatorios')
 			return
 		}
 
@@ -96,27 +98,27 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 			if (editingProduct) {
 				// Actualizar producto existente
 				const response = await productAPI.update(editingProduct._id, productData)
-				if (response.success) {
-					toast.success('Producto actualizado correctamente')
+                if (response.success) {
+                    toastSuccess('Producto actualizado correctamente')
 					await loadProducts()
 					handleCloseForm()
 				} else {
-					toast.error('Error al actualizar producto')
+                    toastError('Error al actualizar producto')
 				}
 			} else {
 				// Crear nuevo producto
 				const response = await productAPI.create(productData)
-				if (response.success) {
-					toast.success('Producto creado correctamente')
+                if (response.success) {
+                    toastSuccess('Producto creado correctamente')
 					await loadProducts()
 					handleCloseForm()
 				} else {
-					toast.error('Error al crear producto')
+                    toastError('Error al crear producto')
 				}
 			}
 		} catch (error) {
 			console.error('Error saving product:', error)
-			toast.error('Error al guardar producto')
+            toastError('Error al guardar producto')
 		} finally {
 			setIsLoading(false)
 		}
@@ -143,15 +145,15 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 		try {
 			setIsLoading(true)
 			const response = await productAPI.delete(productId)
-			if (response.success) {
-				toast.success('Producto eliminado correctamente')
+            if (response.success) {
+                toastSuccess('Producto eliminado correctamente')
 				await loadProducts()
 			} else {
-				toast.error('Error al eliminar producto')
+                toastError('Error al eliminar producto')
 			}
 		} catch (error) {
 			console.error('Error deleting product:', error)
-			toast.error('Error al eliminar producto')
+            toastError('Error al eliminar producto')
 		} finally {
 			setIsLoading(false)
 		}
@@ -279,10 +281,10 @@ const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 										<div className="flex items-center justify-between">
 											<div className="flex-1">
 												<h3 className="font-medium">{product.name}</h3>
-												<p className={`text-sm ${
+                                                <p className={`text-sm ${
 													isDarkMode ? 'text-gray-400' : 'text-gray-600'
 												}`}>
-													{product.pricePerUnit}€/{product.unit}
+                                                    {formatCurrencyEUR(Number(product.pricePerUnit))}/{product.unit}
 												</p>
 												{product.category && (
 													<span className={`inline-block px-2 py-1 text-xs rounded ${

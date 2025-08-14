@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
+import { authAPI } from '../services/api'
 
 interface User {
 	_id: string;
@@ -13,6 +14,7 @@ interface AuthFormProps {
 }
 
 const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
+  const { success: toastSuccess, error: toastError } = useToast()
 	const [isLogin, setIsLogin] = useState(true)
 	const [showPassword, setShowPassword] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
@@ -49,22 +51,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
 		setIsLoading(true)
 
 		try {
-			const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
-			const payload = isLogin 
-				? { email: formData.email, password: formData.password }
-				: formData
+            const payload = isLogin
+                ? { email: formData.email, password: formData.password }
+                : { name: formData.name, email: formData.email, password: formData.password }
 
-			const response = await fetch(`http://localhost:3000${endpoint}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(payload),
-			})
+            const data = isLogin
+                ? await authAPI.login(payload as { email: string; password: string })
+                : await authAPI.register(payload as { name: string; email: string; password: string })
 
-			const data = await response.json()
-
-			if (response.ok) {
+            if (data?.token) {
 				// Guardar token
 				localStorage.setItem('token', data.token)
 				
@@ -74,38 +69,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
 					email: formData.email,
 					name: data.name || formData.name || 'Usuario'
 				}
+                try { localStorage.setItem('user', JSON.stringify(userData)) } catch {}
 
-				// Notificación de éxito
-				toast.success(
-					isLogin ? '¡Bienvenido de vuelta!' : '¡Cuenta creada exitosamente!',
-					{
-						position: "top-right",
-						autoClose: 3000,
-						hideProgressBar: false,
-						closeOnClick: true,
-						pauseOnHover: true,
-						draggable: true,
-					}
-				)
+        // Notificación de éxito
+        toastSuccess(isLogin ? '¡Bienvenido de vuelta!' : '¡Cuenta creada exitosamente!')
 
 				// Callback de login
 				onLogin(userData)
-			} else {
+      } else {
 				throw new Error(data.message || 'Error en la autenticación')
 			}
-		} catch (error) {
+        } catch (error) {
 			console.error('Error:', error)
-			toast.error(
-				error instanceof Error ? error.message : 'Error de conexión. Verifique su conexión a internet.',
-				{
-					position: "top-right",
-					autoClose: 5000,
-					hideProgressBar: false,
-					closeOnClick: true,
-					pauseOnHover: true,
-					draggable: true,
-				}
-			)
+      toastError(error instanceof Error ? error.message : 'Error de conexión. Verifique su conexión a internet.')
 		} finally {
 			setIsLoading(false)
 		}

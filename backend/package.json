@@ -7,6 +7,9 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
+    "build:client": "npm --prefix ../agrodigital-mvp run build",
+    "build:all": "npm run build:client && npm run build",
+    "start:all": "npm run build:all && npm run start",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "clean": "rimraf dist"

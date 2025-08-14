@@ -10,6 +10,7 @@ const inventory_1 = __importDefault(require("./inventory"));
 const products_1 = __importDefault(require("./products"));
 const suppliers_1 = __importDefault(require("./suppliers"));
 const purchases_1 = __importDefault(require("./purchases"));
+const templates_1 = __importDefault(require("./templates"));
 const router = express_1.default.Router();
 router.get('/health', (_req, res) => {
     res.json({
@@ -25,5 +26,6 @@ router.use('/inventory', inventory_1.default);
 router.use('/products', products_1.default);
 router.use('/suppliers', suppliers_1.default);
 router.use('/purchases', purchases_1.default);
+router.use('/templates', templates_1.default);
 exports.default = router;
 //# sourceMappingURL=index.js.map

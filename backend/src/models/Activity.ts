@@ -349,13 +349,13 @@ const WaterDataSchema = new Schema<IWaterData>({
     default: false
   },
   waterSource: {
-    type: String,
-    trim: true
-  },
+      type: String,
+      trim: true
+    },
   irrigationType: {
-    type: String,
-    trim: true
-  },
+      type: String,
+      trim: true
+    },
   dailyRecords: {
     type: [DailyWaterRecordSchema],
     default: []
@@ -374,9 +374,9 @@ const EnergyDataSchema = new Schema<IEnergyData>({
     default: false
   },
   energyType: {
-    type: String,
-    trim: true
-  },
+      type: String,
+      trim: true
+    },
   dailyConsumption: {
     type: Number,
     min: 0
@@ -435,7 +435,7 @@ const ActivitySchema = new Schema<IActivity>({
     default: 'ha'
   },
   transplantDate: {
-    type: String,
+      type: String,
     validate: {
       validator: function(v: string) {
         return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import Activity, { IActivity } from '../models/Activity'
+import { adjustStockAtomically } from '../services/inventoryService'
 import InventoryProduct, { IInventoryProduct } from '../models/InventoryProduct'
 
 // Definir la interfaz AuthenticatedRequest localmente
@@ -495,7 +496,7 @@ export const addFertigationDay = async (req: AuthenticatedRequest, res: Response
 			return res.status(404).json({ success: false, message: 'Actividad no encontrada' })
 		}
 
-		const newDayRecord = {
+    const newDayRecord = {
 			date,
 			fertilizers: fertilizers || [],
 			waterConsumption: waterConsumption || 0,
@@ -504,7 +505,18 @@ export const addFertigationDay = async (req: AuthenticatedRequest, res: Response
 			notes
 		}
 
-		if (!activity.fertigation) {
+    // Validación y ajuste de stock atómico para fertilizantes
+    const ops = (fertilizers || [])
+      .filter((f: any) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+      .map((f: any) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.unit || f.fertilizerUnit, context: { activityId, module: 'fertigation' as const, dayIndex: (activity.fertigation?.dailyRecords?.length || 0) } }))
+    if (ops.length > 0) {
+      const result = await adjustStockAtomically(userId!, ops)
+      if (!result.ok) {
+        return res.status(400).json({ success: false, message: result.error, details: result.details })
+      }
+    }
+
+    if (!activity.fertigation) {
 			activity.fertigation = { enabled: true, dailyRecords: [] }
 		}
 		activity.fertigation.dailyRecords.push(newDayRecord)
@@ -545,9 +557,25 @@ export const updateFertigationDay = async (req: AuthenticatedRequest, res: Respo
 			return res.status(400).json({ success: false, message: 'Índice de día inválido' })
 		}
 
-		// Actualizar registro
-		const oldCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost
-		activity.fertigation.dailyRecords[dayIndexNum] = {
+    // Preparar reversión de inventario: devolver stock de antiguos fertilizantes y restar los nuevos
+    const oldRecord = activity.fertigation.dailyRecords[dayIndexNum]
+    const oldCost = oldRecord.totalCost
+    const revertOps = (oldRecord.fertilizers || [])
+      .filter((f: any) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+      .map((f: any) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'add' as const }))
+    const newOps = (fertilizers || [])
+      .filter((f: any) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+      .map((f: any) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'subtract' as const }))
+    const ops = [...revertOps, ...newOps]
+    if (ops.length > 0) {
+      const stockResult = await adjustStockAtomically(userId!, ops)
+      if (!stockResult.ok) {
+        return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details })
+      }
+    }
+
+    // Actualizar registro
+    activity.fertigation.dailyRecords[dayIndexNum] = {
 			date,
 			fertilizers,
 			waterConsumption: waterConsumption || 0,
@@ -591,24 +619,37 @@ export const deleteFertigationDay = async (req: AuthenticatedRequest, res: Respo
 			return res.status(400).json({ success: false, message: 'Índice de día inválido' })
 		}
 
-		// Restar coste del día eliminado
-		const deletedCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost
+    // Revertir stock de los fertilizantes de ese día
+    const deletedRecord = activity.fertigation.dailyRecords[dayIndexNum]
+    const ops = (deletedRecord.fertilizers || [])
+      .filter((f: any) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+      .map((f: any) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'add' as const, context: { activityId, module: 'fertigation' as const, dayIndex: dayIndexNum } }))
+    if (ops.length > 0) {
+      const stockResult = await adjustStockAtomically(userId!, ops)
+      if (!stockResult.ok) {
+        return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details })
+      }
+    }
+
+    // Restar coste del día eliminado
+    const deletedCost = deletedRecord.totalCost
 		activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost)
 
-		// Eliminar registro
-		activity.fertigation.dailyRecords.splice(dayIndexNum, 1)
+    // Eliminar registro
+    activity.fertigation.dailyRecords.splice(dayIndexNum, 1)
 
 		// Deshabilitar fertirriego si no hay registros
 		if (activity.fertigation.dailyRecords.length === 0) {
 			activity.fertigation.enabled = false
 		}
 
-		await activity.save()
+    await activity.save()
 
-		return res.json({
-			success: true,
-			message: 'Día de fertirriego eliminado exitosamente'
-		})
+    return res.json({
+      success: true,
+      message: 'Día de fertirriego eliminado exitosamente',
+      activity
+    })
 	} catch (error) {
 		console.error('Error deleting fertigation day:', error)
 		return res.status(500).json({ success: false, message: 'Error interno del servidor' })
@@ -638,14 +679,25 @@ export const addPhytosanitaryDay = async (req: AuthenticatedRequest, res: Respon
 		}
 
 		// Crear nuevo registro diario
-		const newDayRecord = {
+    const newDayRecord = {
 			date,
 			phytosanitaries,
 			totalCost: totalCost || 0,
 			notes
 		}
 
-		// Añadir a la actividad (necesitamos actualizar el modelo para soportar registros diarios de fitosanitarios)
+    // Validación y ajuste atómico de stock para fitosanitarios
+    const ops = (phytosanitaries || [])
+      .filter((p: any) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+      .map((p: any) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.unit || p.phytosanitaryUnit, context: { activityId, module: 'phytosanitary' as const, dayIndex: (activity.phytosanitary?.dailyRecords?.length || 0) } }))
+    if (ops.length > 0) {
+      const result = await adjustStockAtomically(userId!, ops)
+      if (!result.ok) {
+        return res.status(400).json({ success: false, message: result.error, details: result.details })
+      }
+    }
+
+    // Añadir a la actividad
 		if (!activity.phytosanitary) {
 			activity.phytosanitary = { enabled: true, dailyRecords: [] }
 		}
@@ -681,8 +733,24 @@ export const updatePhytosanitaryDay = async (req: AuthenticatedRequest, res: Res
 		if (!activity || !activity.phytosanitary) return res.status(404).json({ success: false, message: 'Actividad o fitosanitarios no encontrados' })
 		const idx = parseInt(dayIndex)
 		if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length) return res.status(400).json({ success: false, message: 'Índice inválido' })
-		const oldCost = activity.phytosanitary.dailyRecords[idx].totalCost
-		activity.phytosanitary.dailyRecords[idx] = { date, phytosanitaries, totalCost: totalCost || 0, notes }
+    const oldRecord = activity.phytosanitary.dailyRecords[idx]
+    const oldCost = oldRecord.totalCost
+    // Revertir stock anterior y aplicar nuevo stock
+    const revertOps = (oldRecord.phytosanitaries || [])
+      .filter((p: any) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+      .map((p: any) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'add' as const, context: { activityId, module: 'phytosanitary' as const, dayIndex: idx } }))
+    const newOps = (phytosanitaries || [])
+      .filter((p: any) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+      .map((p: any) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'subtract' as const, context: { activityId, module: 'phytosanitary' as const, dayIndex: idx } }))
+    const ops = [...revertOps, ...newOps]
+    if (ops.length > 0) {
+      const stockResult = await adjustStockAtomically(userId!, ops)
+      if (!stockResult.ok) {
+        return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details })
+      }
+    }
+
+    activity.phytosanitary.dailyRecords[idx] = { date, phytosanitaries, totalCost: totalCost || 0, notes }
 		activity.totalCost = (activity.totalCost || 0) - oldCost + (totalCost || 0)
 		await activity.save()
 		return res.json({ success: true, message: 'Día de fitosanitarios actualizado', dayRecord: activity.phytosanitary.dailyRecords[idx] })
@@ -701,12 +769,22 @@ export const deletePhytosanitaryDay = async (req: AuthenticatedRequest, res: Res
 		if (!activity || !activity.phytosanitary) return res.status(404).json({ success: false, message: 'Actividad o fitosanitarios no encontrados' })
 		const idx = parseInt(dayIndex)
 		if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length) return res.status(400).json({ success: false, message: 'Índice inválido' })
-		const deletedCost = activity.phytosanitary.dailyRecords[idx].totalCost
+    const deletedRecord = activity.phytosanitary.dailyRecords[idx]
+    const ops = (deletedRecord.phytosanitaries || [])
+      .filter((p: any) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+      .map((p: any) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'add' as const, context: { activityId, module: 'phytosanitary' as const, dayIndex: idx } }))
+    if (ops.length > 0) {
+      const stockResult = await adjustStockAtomically(userId!, ops)
+      if (!stockResult.ok) {
+        return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details })
+      }
+    }
+    const deletedCost = deletedRecord.totalCost
 		activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost)
 		activity.phytosanitary.dailyRecords.splice(idx, 1)
 		if (activity.phytosanitary.dailyRecords.length === 0) activity.phytosanitary.enabled = false
-		await activity.save()
-		return res.json({ success: true, message: 'Día de fitosanitarios eliminado' })
+    await activity.save()
+    return res.json({ success: true, message: 'Día de fitosanitarios eliminado', activity })
 	} catch (e) {
 		console.error('Error deleting phytosanitary day:', e)
 		return res.status(500).json({ success: false, message: 'Error interno del servidor' })
@@ -803,8 +881,8 @@ export const deleteWaterDay = async (req: AuthenticatedRequest, res: Response) =
 		activity.totalCost = Math.max(0, (activity.totalCost || 0) - (deletedCost || 0))
 		activity.water.dailyRecords.splice(idx, 1)
 		if (activity.water.dailyRecords.length === 0) activity.water.enabled = false
-		await activity.save()
-		return res.json({ success: true, message: 'Día de agua eliminado' })
+    await activity.save()
+    return res.json({ success: true, message: 'Día de agua eliminado', activity })
 	} catch (e) {
 		console.error('Error deleting water day:', e)
 		return res.status(500).json({ success: false, message: 'Error interno del servidor' })

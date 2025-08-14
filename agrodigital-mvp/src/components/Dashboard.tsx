@@ -10,7 +10,9 @@ import {
 	Moon,
 	LogOut
 } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
+import { formatCurrencyEUR } from '../utils/format'
+import { activityAPI, dashboardAPI } from '../services/api'
 import type { Activity as ActivityType } from '../types'
 
 // Lazy loading para modales pesados
@@ -36,11 +38,22 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
-	const [isDarkMode, setIsDarkMode] = useState(false)
-	const [activities, setActivities] = useState<ActivityType[]>([])
-	const [stats, setStats] = useState<any>(null)
-	const [searchTerm, setSearchTerm] = useState('')
-	const [selectedCropType, setSelectedCropType] = useState('all')
+    const { success: toastSuccess, error: toastError } = useToast()
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+        try { return localStorage.getItem('darkMode') === 'true' } catch { return false }
+    })
+    const [activities, setActivities] = useState<ActivityType[]>([])
+    const [stats, setStats] = useState<any>(null)
+    const [isLoadingDashboard, setIsLoadingDashboard] = useState<boolean>(false)
+    const [searchTerm, setSearchTerm] = useState<string>(() => {
+        try { return localStorage.getItem('dash:search') || '' } catch { return '' }
+    })
+    const [selectedCropType, setSelectedCropType] = useState<string>(() => {
+        try { return localStorage.getItem('dash:crop') || 'all' } catch { return 'all' }
+    })
+    const [sortKey, setSortKey] = useState<'date' | 'cost'>(() => {
+        try { return (localStorage.getItem('dash:sort') as 'date' | 'cost') || 'date' } catch { return 'date' }
+    })
 	const [showActivityModal, setShowActivityModal] = useState(false)
 	const [selectedActivity, setSelectedActivity] = useState<ActivityType | null>(null)
 	const [showInventoryModal, setShowInventoryModal] = useState(false)
@@ -48,92 +61,122 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 	const [showSupplierModal, setShowSupplierModal] = useState(false)
 	const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 	const [showSupplierStatsModal, setShowSupplierStatsModal] = useState(false)
+  const [confirmDeleteActivityId, setConfirmDeleteActivityId] = useState<string | null>(null)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
 
 	useEffect(() => {
 		loadDashboardData()
+    const onChanged = () => loadDashboardData()
+    window.addEventListener('app:data-changed', onChanged as EventListener)
+    return () => window.removeEventListener('app:data-changed', onChanged as EventListener)
 	}, [])
 
+	// Abrir Inventario automáticamente si la URL contiene ?productId=... o ruta /inventario
 	useEffect(() => {
-		// Aplicar modo oscuro al body
-		if (isDarkMode) {
-			document.documentElement.classList.add('dark')
-		} else {
-			document.documentElement.classList.remove('dark')
+		const checkOpenInventory = () => {
+			try {
+				const url = new URL(window.location.href)
+				const hasPid = !!url.searchParams.get('productId')
+				const isInventoryPath = url.pathname.includes('inventario') || url.hash.includes('inventario')
+				if (hasPid || isInventoryPath) {
+					setShowInventoryModal(true)
+				}
+			} catch {}
 		}
-	}, [isDarkMode])
+		checkOpenInventory()
+		window.addEventListener('popstate', checkOpenInventory)
+		window.addEventListener('hashchange', checkOpenInventory)
+		return () => {
+			window.removeEventListener('popstate', checkOpenInventory)
+			window.removeEventListener('hashchange', checkOpenInventory)
+		}
+	}, [])
+
+    useEffect(() => {
+        // Aplicar y persistir modo oscuro
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+        try { localStorage.setItem('darkMode', String(isDarkMode)) } catch {}
+    }, [isDarkMode])
+
+    // Persistir filtros/búsqueda/orden
+    useEffect(() => {
+        try { localStorage.setItem('dash:search', searchTerm) } catch {}
+    }, [searchTerm])
+    useEffect(() => {
+        try { localStorage.setItem('dash:crop', selectedCropType) } catch {}
+    }, [selectedCropType])
+    useEffect(() => {
+        try { localStorage.setItem('dash:sort', sortKey) } catch {}
+    }, [sortKey])
 
 	const loadDashboardData = async () => {
-		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch('http://localhost:3000/api/dashboard/stats', {
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				setStats(data.stats)
-				setActivities(data.recentActivities || [])
-			}
+    try {
+            setIsLoadingDashboard(true)
+            const data = await dashboardAPI.stats()
+            setStats(data.stats)
+            setActivities(data.recentActivities || [])
 		} catch (error) {
 			console.error('Error loading dashboard data:', error)
-			toast.error('Error al cargar los datos del dashboard')
-		}
+			toastError('Error al cargar los datos del dashboard')
+    } finally { setIsLoadingDashboard(false) }
 	}
 
 	const handleActivitySubmit = async (activityData: any) => {
 		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch('http://localhost:3000/api/dashboard/activities', {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(activityData)
-			})
-
-			if (response.ok) {
-				toast.success('Actividad creada exitosamente')
+            const response = await activityAPI.create(activityData)
+            if (response?.success !== false) {
+				toastSuccess('Actividad creada exitosamente')
 				setShowActivityModal(false)
 				loadDashboardData()
 			} else {
-				toast.error('Error al crear la actividad')
+				toastError('Error al crear la actividad')
 			}
 		} catch (error) {
 			console.error('Error creating activity:', error)
-			toast.error('Error al crear la actividad')
+			toastError('Error al crear la actividad')
 		}
 	}
 
-	const handleActivityDelete = async (activityId: string) => {
-		if (!confirm('¿Estás seguro de que quieres eliminar esta actividad?')) return
+  const handleActivityDelete = (activityId: string) => {
+    setConfirmDeleteActivityId(activityId)
+    setIsConfirmDeleteOpen(true)
+  }
 
-		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch(`http://localhost:3000/api/dashboard/activities/${activityId}`, {
-				method: 'DELETE',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
+  const confirmDelete = async () => {
+    const activityId = confirmDeleteActivityId
+    if (!activityId) { setIsConfirmDeleteOpen(false); return }
+    try {
+      const response = await activityAPI.delete(activityId)
+      if (response?.success !== false) {
+        toastSuccess('Actividad eliminada exitosamente')
+        loadDashboardData()
+      } else {
+        toastError('Error al eliminar la actividad')
+      }
+    } catch (error) {
+      console.error('Error deleting activity:', error)
+      toastError('Error al eliminar la actividad')
+    } finally {
+      setIsConfirmDeleteOpen(false)
+      setConfirmDeleteActivityId(null)
+    }
+  }
 
-			if (response.ok) {
-				toast.success('Actividad eliminada exitosamente')
-				loadDashboardData()
-			} else {
-				toast.error('Error al eliminar la actividad')
-			}
-		} catch (error) {
-			console.error('Error deleting activity:', error)
-			toast.error('Error al eliminar la actividad')
-		}
-	}
+  const cancelDelete = () => {
+    setIsConfirmDeleteOpen(false)
+    setConfirmDeleteActivityId(null)
+  }
 
-	const filteredActivities = activities.filter(activity => {
+  // Refrescar dashboard cuando se actualicen días dentro del detalle
+  const handleActivityChanged = () => {
+    loadDashboardData()
+  }
+
+    const filteredActivities = activities.filter(activity => {
 		const matchesSearch = activity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
 							(activity.notes && activity.notes.toLowerCase().includes(searchTerm.toLowerCase()))
 		const matchesFilter = selectedCropType === 'all' || activity.cropType === selectedCropType
@@ -175,10 +218,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 	}>)
 
 	// Ordenar grupos por fecha más reciente
-	const sortedGroups = Object.values(groupedActivities).sort((a, b) => {
-		if (!a.lastDate || !b.lastDate) return 0
-		return b.lastDate.getTime() - a.lastDate.getTime()
-	})
+    const sortedGroups = Object.values(groupedActivities).sort((a, b) => {
+        if (sortKey === 'cost') {
+            return (b.totalCost || 0) - (a.totalCost || 0)
+        }
+        if (!a.lastDate || !b.lastDate) return 0
+        return b.lastDate.getTime() - a.lastDate.getTime()
+    })
 
 	const getActivityTypeColor = (cropType: string) => {
 		const colors: { [key: string]: string } = {
@@ -211,12 +257,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 		})
 	}
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat('es-ES', {
-			style: 'currency',
-			currency: 'EUR'
-		}).format(amount)
-	}
+    const formatCurrency = (amount: number) => formatCurrencyEUR(Number(amount))
 
 	return (
 		<div className={`min-h-screen transition-colors ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -345,7 +386,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 					<div className="flex-1">
 						<div className="space-y-6">
 							{/* Stats Cards */}
-							{stats && (
+                            {isLoadingDashboard && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                                    {Array.from({ length: 4 }).map((_, i) => (
+                                        <div key={i} className={`p-4 sm:p-6 rounded-xl shadow-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                                            <div className="animate-pulse space-y-3">
+                                                <div className="h-3 w-24 rounded bg-gray-300 dark:bg-gray-600" />
+                                                <div className="h-6 w-32 rounded bg-gray-200 dark:bg-gray-700" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {stats && !isLoadingDashboard && (
 								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
 									<div className={`p-4 sm:p-6 rounded-xl shadow-lg border transition-colors ${
 										isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
@@ -437,7 +491,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 
 								<div className="p-6">
 									{/* Search and Filter */}
-									<div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
 										<div className="flex-1">
 											<input
 												type="text"
@@ -451,7 +505,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 												}`}
 											/>
 										</div>
-										<div className="sm:w-48">
+                                        <div className="sm:w-48">
 											<select
 												value={selectedCropType}
 												onChange={(e) => setSelectedCropType(e.target.value)}
@@ -467,6 +521,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 												))}
 											</select>
 										</div>
+                                        <div className="sm:w-56">
+                                            <select
+                                                value={sortKey}
+                                                onChange={(e) => setSortKey(e.target.value as 'date' | 'cost')}
+                                                className={`w-full px-4 py-2 border rounded-lg transition-colors ${
+                                                    isDarkMode 
+                                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                                        : 'bg-white border-gray-300 text-gray-900'
+                                                }`}
+                                            >
+                                                <option value="date">Ordenar por fecha</option>
+                                                <option value="cost">Ordenar por coste</option>
+                                            </select>
+                                        </div>
 									</div>
 
 									{/* Activities List */}
@@ -587,6 +655,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 			</div>
 
 			{/* Modals */}
+			{isConfirmDeleteOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+					<div className={`w-full max-w-md rounded-lg p-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+						<h3 className="text-lg font-semibold mb-2">Confirmar eliminación</h3>
+						<p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-4`}>Esta acción eliminará la actividad y no se puede deshacer.</p>
+						<div className="flex justify-end gap-2">
+							<button onClick={cancelDelete} className={`px-4 py-2 rounded border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancelar</button>
+							<button onClick={confirmDelete} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Eliminar</button>
+						</div>
+					</div>
+				</div>
+			)}
 			{showActivityModal && (
 				<Suspense fallback={<ModalLoadingSpinner />}>
 					<ActivityFormModal
@@ -600,11 +680,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 
 			{selectedActivity && (
 				<Suspense fallback={<ModalLoadingSpinner />}>
-					<ActivityDetailModal
+            <ActivityDetailModal
 						activity={selectedActivity}
 						isOpen={!!selectedActivity}
 						onClose={() => setSelectedActivity(null)}
-						isDarkMode={isDarkMode}
+              isDarkMode={isDarkMode}
+              onChanged={handleActivityChanged}
 					/>
 				</Suspense>
 			)}

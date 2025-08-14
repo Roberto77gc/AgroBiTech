@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { X, Plus, Edit, Trash2, Package, Search, AlertTriangle, AlertCircle, Clock, MapPin } from 'lucide-react'
+import { X, Plus, Edit, Trash2, Package, Search, AlertTriangle, AlertCircle, Clock, MapPin, History } from 'lucide-react'
 import type { InventoryItem, InventoryAlert } from '../types'
 import { inventoryAPI } from '../services/api'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
+import InventoryMovementsModal from './InventoryMovementsModal'
 
 interface InventoryModalProps {
 	isOpen: boolean
@@ -15,13 +16,15 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 	onClose,
 	isDarkMode
 }) => {
+  const { success: toastSuccess, error: toastError } = useToast()
 	const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
 	const [alerts, setAlerts] = useState<InventoryAlert[]>([])
 	const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([])
 	const [selectedType, setSelectedType] = useState<'fertilizer' | 'water' | 'phytosanitary'>('fertilizer')
 	const [searchTerm, setSearchTerm] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
-	const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [showMovementsModal, setShowMovementsModal] = useState(false)
 	const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
 	const [formData, setFormData] = useState({
 		productId: '',
@@ -36,11 +39,38 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 	})
 
 	// Cargar datos al abrir el modal
-	useEffect(() => {
-		if (isOpen) {
-			loadInventoryData()
-		}
-	}, [isOpen])
+  useEffect(() => {
+    if (isOpen) {
+      loadInventoryData()
+      // Prefiltrar por productId si viene en la query (?productId=...)
+      try {
+        const url = new URL(window.location.href)
+        const pid = url.searchParams.get('productId')
+        if (pid) {
+          // Intentar localizar el item y abrir su edición
+          // Si aún no está cargado, esperaremos a que loadInventoryData termine
+          setTimeout(() => {
+            const match = inventoryItems.find(i => i.productId === pid)
+            if (match) {
+              handleEdit(match)
+            } else {
+              // Si no existe, hacemos una consulta directa por producto y lo añadimos a la lista
+              inventoryAPI.getByProduct(pid).then((res: any) => {
+                const item = res?.item || res
+                if (item && item.productId === pid) {
+                  setInventoryItems(prev => {
+                    const exists = prev.some(p => p._id === item._id)
+                    return exists ? prev : [item, ...prev]
+                  })
+                  handleEdit(item)
+                }
+              }).catch(() => {})
+            }
+          }, 300)
+        }
+      } catch {}
+    }
+  }, [isOpen])
 
 	// Filtrar items cuando cambie el tipo o búsqueda
 	useEffect(() => {
@@ -71,9 +101,9 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 			if (alertsResponse.success) {
 				setAlerts(alertsResponse.alerts)
 			}
-		} catch (error) {
-			console.error('Error loading inventory data:', error)
-			toast.error('Error al cargar datos de inventario')
+    } catch (error) {
+      console.error('Error loading inventory data:', error)
+      toastError('Error al cargar datos de inventario')
 		} finally {
 			setIsLoading(false)
 		}
@@ -90,8 +120,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		
-		if (!formData.productName || !formData.currentStock || !formData.minStock || !formData.criticalStock || !formData.unit || !formData.location) {
-			toast.error('Por favor completa todos los campos obligatorios')
+    if (!formData.productName || !formData.currentStock || !formData.minStock || !formData.criticalStock || !formData.unit || !formData.location) {
+      toastError('Por favor completa todos los campos obligatorios')
 			return
 		}
 
@@ -108,27 +138,27 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 			if (editingItem) {
 				// Actualizar item existente
 				const response = await inventoryAPI.update(editingItem._id, itemData)
-				if (response.success) {
-					toast.success('Item de inventario actualizado correctamente')
+        if (response.success) {
+          toastSuccess('Item de inventario actualizado correctamente')
 					await loadInventoryData()
 					handleCloseForm()
 				} else {
-					toast.error('Error al actualizar item de inventario')
+          toastError('Error al actualizar item de inventario')
 				}
 			} else {
 				// Crear nuevo item
 				const response = await inventoryAPI.create(itemData)
-				if (response.success) {
-					toast.success('Item de inventario creado correctamente')
+        if (response.success) {
+          toastSuccess('Item de inventario creado correctamente')
 					await loadInventoryData()
 					handleCloseForm()
 				} else {
-					toast.error('Error al crear item de inventario')
+          toastError('Error al crear item de inventario')
 				}
 			}
 		} catch (error) {
 			console.error('Error saving inventory item:', error)
-			toast.error('Error al guardar item de inventario')
+      toastError('Error al guardar item de inventario')
 		} finally {
 			setIsLoading(false)
 		}
@@ -158,15 +188,15 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 		try {
 			setIsLoading(true)
 			const response = await inventoryAPI.delete(itemId)
-			if (response.success) {
-				toast.success('Item de inventario eliminado correctamente')
+      if (response.success) {
+        toastSuccess('Item de inventario eliminado correctamente')
 				await loadInventoryData()
 			} else {
-				toast.error('Error al eliminar item de inventario')
+        toastError('Error al eliminar item de inventario')
 			}
 		} catch (error) {
 			console.error('Error deleting inventory item:', error)
-			toast.error('Error al eliminar item de inventario')
+      toastError('Error al eliminar item de inventario')
 		} finally {
 			setIsLoading(false)
 		}
@@ -226,14 +256,46 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 						<Package className="w-6 h-6 text-purple-500" />
 						<h2 className="text-xl font-semibold">Gestión de Inventario</h2>
 					</div>
-					<button
-						onClick={onClose}
-						className={`p-2 rounded-lg hover:bg-opacity-80 ${
-							isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-						}`}
-					>
-						<X className="w-5 h-5" />
-					</button>
+					<div className="flex items-center gap-2">
+						{/* Volver al día si venimos con productId en query */}
+                    <button
+                      onClick={() => setShowMovementsModal(true)}
+                      className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    >
+                      <History className="w-4 h-4" />
+                      Ver movimientos
+                    </button>
+                    {(() => {
+							try {
+								const url = new URL(window.location.href)
+								if (url.searchParams.get('productId')) {
+									return (
+										<button
+											onClick={() => {
+												// Limpiar query y cerrar modal
+												url.searchParams.delete('productId')
+												const newUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '') + url.hash
+												history.replaceState(null, '', newUrl)
+												onClose()
+											}}
+											className={`px-3 py-2 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+										>
+											Volver al día
+										</button>
+									)
+								}
+							} catch {}
+							return null
+						})()}
+						<button
+							onClick={onClose}
+							className={`p-2 rounded-lg hover:bg-opacity-80 ${
+								isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+							}`}
+						>
+							<X className="w-5 h-5" />
+						</button>
+					</div>
 				</div>
 
 				<div className="flex h-[calc(90vh-120px)]">
@@ -653,6 +715,15 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 					</div>
 				</div>
 			</div>
+
+      {/* Inventory Movements Modal */}
+      {showMovementsModal && (
+        <InventoryMovementsModal
+          isOpen={showMovementsModal}
+          onClose={() => setShowMovementsModal(false)}
+          isDarkMode={isDarkMode}
+        />
+      )}
 		</div>
 	)
 }

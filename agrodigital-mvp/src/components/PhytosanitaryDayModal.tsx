@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
-import type { ProductPrice, DailyPhytosanitaryRecord as DailyPhytoTypesRecord } from '../types'
-import { productAPI } from '../services/api'
+import type { ProductPrice, DailyPhytosanitaryRecord as DailyPhytoTypesRecord, PhytosanitaryRecord as GlobalPhytosanitaryRecord } from '../types'
+// import { convertAmount } from '../utils/units'
+import { productAPI, templateAPI, inventoryAPI } from '../services/api'
+import { getWithCache } from '../utils/cache'
+import { useExportCsv } from '../hooks/useExportCsv'
+import { useRecentProducts } from '../hooks/useRecentProducts'
+import { useLastDay } from '../hooks/useLastDay'
+import { useAutosaveDraft } from '../hooks/useAutosaveDraft'
+import ProductSelect from './common/ProductSelect'
+import TemplatesMenu from './common/TemplatesMenu'
+import StockBadge from './common/StockBadge'
+import EmptyState from './common/EmptyState'
+// import { loadLastDay, saveLastDay } from '../utils/lastDay'
+import { createPhytosanitaryTemplate } from '../domain/templates'
+import { calculatePhytosanitaryTotals } from '../domain/costs'
+import { formatCurrencyEUR } from '../utils/format'
+import { unitPriceFor } from '../domain/validation'
+import { useToast } from './ui/ToastProvider'
+import { useNavigate } from 'react-router-dom'
 
-interface PhytosanitaryRecord {
-	productId: string
-	phytosanitaryType: string
-	phytosanitaryAmount: number
-	phytosanitaryUnit: string
-	price?: number
-	unit?: string
-	brand: string
-	supplier: string
-	purchaseDate: string
-	cost: number
-}
+type PhytosanitaryRecord = GlobalPhytosanitaryRecord
 
 // Alinear firma local con tipos globales
 type DailyPhytosanitaryRecord = DailyPhytoTypesRecord
@@ -43,13 +49,85 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 		totalCost: 0
 	})
 
-	const [availablePhytosanitaries, setAvailablePhytosanitaries] = useState<ProductPrice[]>([])
+  const [availablePhytosanitaries, setAvailablePhytosanitaries] = useState<ProductPrice[]>([])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [savedTemplates, setSavedTemplates] = useState<any[]>([])
+  const [newTemplateName, setNewTemplateName] = useState('')
+  // Edición de nombre ahora gestionada por TemplatesMenu
+  const { success: toastSuccess, error: toastError, show: toastShow } = useToast()
+  const navigate = useNavigate()
+  // Búsqueda por fila / recientes / undo / autosave
+  const [selectFilterTextByIndex, setSelectFilterTextByIndex] = useState<Record<number, string>>({})
+  // Replaced by useRecentProducts
+  const lastRemovedRef = useRef<{ index: number; record: PhytosanitaryRecord } | null>(null)
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const storageKey = useMemo(() => `phyto:draft:${activityName || 'default'}`, [activityName])
+  const draftReadyRef = useRef(false)
+  const preventInvalidNumberKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['e', 'E', '+', '-'].includes(e.key)) {
+      e.preventDefault()
+    }
+  }
+  // Cache de stock por producto para validación inmediata
+  const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
+  const scheduledInvIdsRef = useRef<Set<string>>(new Set())
+  const invTimerRef = useRef<number | undefined>(undefined)
+  const scheduleInventoryFetch = useCallback((productId: string) => {
+    if (!productId) return
+    scheduledInvIdsRef.current.add(productId)
+    if (!invTimerRef.current) {
+      // @ts-ignore
+      invTimerRef.current = window.setTimeout(async () => {
+        const ids = Array.from(scheduledInvIdsRef.current)
+        scheduledInvIdsRef.current.clear()
+        invTimerRef.current = undefined
+        try {
+          const mapRes = await inventoryAPI.getByProducts(ids)
+          const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = mapRes?.items || {}
+          setStockByProduct(prev => {
+            const next = { ...prev }
+            for (const id of ids) {
+              const it = itemsMap[id]
+              next[id] = { stock: Number(it?.currentStock) || 0, unit: it?.unit || prev[id]?.unit || 'L' }
+            }
+            return next
+          })
+        } catch {}
+      }, 150)
+    }
+  }, [])
+
+  // Validación en tiempo real de stock para fitosanitarios
+  useEffect(() => {
+    const validateStock = async () => {
+      try {
+        const ids = formData.phytosanitaries.map(p => p.productId).filter(Boolean) as string[]
+        if (ids.length === 0) return
+        const mapRes = await inventoryAPI.getByProducts(Array.from(new Set(ids)))
+        const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = mapRes?.items || {}
+        for (const p of formData.phytosanitaries) {
+          if (!p.productId || (p.phytosanitaryAmount || 0) <= 0) continue
+          const it = itemsMap[p.productId]
+          if (it && p.phytosanitaryAmount > (it.currentStock || 0)) {
+            toastError(`Stock insuficiente para ${p.phytosanitaryType}. Disponible: ${it.currentStock} ${it.unit}`)
+            break
+          }
+        }
+      } catch (_) {
+        // silencioso
+      }
+    }
+    validateStock()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.phytosanitaries])
 
 	useEffect(() => {
 		if (isOpen) {
-			loadData()
+      draftReadyRef.current = false
+      loadData()
+      loadSavedTemplates()
 			if (existingDay) {
 				setFormData(existingDay)
 			} else {
@@ -60,21 +138,34 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 					totalCost: 0
 				})
 			}
+      // Restaurar borrador si existe
+      try {
+        const raw = localStorage.getItem(storageKey)
+        if (!existingDay && raw) {
+          const parsed = JSON.parse(raw)
+          if (parsed?.formData) setFormData(parsed.formData)
+        }
+      } catch {}
+      finally {
+        draftReadyRef.current = true
+      }
 		}
-	}, [isOpen, existingDay])
+  }, [isOpen, existingDay, storageKey])
 
-	const loadData = async () => {
-		try {
-			const phytosanitariesResponse = await productAPI.getByType('phytosanitary')
-			const phytosanitaries = phytosanitariesResponse?.products || phytosanitariesResponse || []
-			setAvailablePhytosanitaries(Array.isArray(phytosanitaries) ? phytosanitaries : [])
-		} catch (error) {
-			console.error('Error loading phytosanitaries:', error)
-			setAvailablePhytosanitaries([])
-		}
-	}
+  const loadData = async () => {
+        try {
+            const cached = await getWithCache<ProductPrice[]>(`cache:phytosanitary:${activityName}`, async () => {
+                const res = await productAPI.getByType('phytosanitary')
+                return res?.products || res || []
+            }, (fresh) => setAvailablePhytosanitaries(Array.isArray(fresh) ? fresh : []))
+            if (cached) setAvailablePhytosanitaries(Array.isArray(cached) ? cached : [])
+        } catch (error) {
+            console.error('Error loading phytosanitaries:', error)
+            setAvailablePhytosanitaries([])
+        }
+    }
 
-	const handleInputChange = (field: keyof DailyPhytosanitaryRecord, value: any) => {
+  const handleInputChange = (field: keyof DailyPhytosanitaryRecord, value: any) => {
 		setFormData(prev => ({ ...prev, [field]: value }))
 		if (errors[field]) {
 			setErrors(prev => ({ ...prev, [field]: '' }))
@@ -100,45 +191,251 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 		}))
 	}
 
-	const updatePhytosanitary = (index: number, field: keyof PhytosanitaryRecord, value: any) => {
-		setFormData(prev => ({
-			...prev,
-			phytosanitaries: prev.phytosanitaries.map((phytosanitary, i) => 
-				i === index ? { ...phytosanitary, [field]: value } : phytosanitary
-			)
-		}))
-	}
+  const updatePhytosanitary = (index: number, field: keyof PhytosanitaryRecord, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      phytosanitaries: prev.phytosanitaries.map((phytosanitary, i) => 
+        i === index ? { ...phytosanitary, [field]: value } : phytosanitary
+      )
+    }))
+  }
 
-	const removePhytosanitary = (index: number) => {
-		setFormData(prev => ({
-			...prev,
-			phytosanitaries: prev.phytosanitaries.filter((_, i) => i !== index)
-		}))
-	}
+  const loadSavedTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true)
+      const res = await templateAPI.list('phytosanitary')
+      setSavedTemplates(Array.isArray(res?.templates) ? res.templates : [])
+    } catch (e) {
+      setSavedTemplates([])
+    } finally { setIsLoadingTemplates(false) }
+  }
 
-	const handlePhytosanitaryTypeChange = async (index: number, productId: string) => {
+  // Plantillas rápidas
+  const applyTemplate = () => {
+    const today = new Date().toISOString().split('T')[0]
+    // Elegir el fitosanitario más barato si existe
+    const list = [...(availablePhytosanitaries || [])]
+      .filter(p => p.type === 'phytosanitary')
+      .sort((a, b) => (a.pricePerUnit || 0) - (b.pricePerUnit || 0))
+
+    const chosen = list[0]
+    const tpl = createPhytosanitaryTemplate(today, {
+      products: chosen
+        ? [{
+            productId: chosen._id,
+            phytosanitaryType: chosen.name,
+            phytosanitaryAmount: 0.25,
+            phytosanitaryUnit: chosen.unit || 'L',
+          }]
+        : [],
+      notes: 'Tratamiento básico',
+    })
+    setFormData({ ...tpl })
+    setShowTemplates(false)
+  }
+
+  const applySavedTemplate = (tpl: any) => {
+    const payload = tpl?.payload || {}
+    const source: any = payload.formData || payload
+    if (!source) return
+    const next: DailyPhytosanitaryRecord = {
+      date: source.date || new Date().toISOString().split('T')[0],
+      phytosanitaries: source.phytosanitaries || [],
+      notes: source.notes || '',
+      totalCost: 0,
+    }
+    setFormData(next)
+    setShowTemplates(false)
+  }
+
+    const saveCurrentAsTemplate = async () => {
+    if (!newTemplateName.trim()) return
+    const payload = { formData }
+    try {
+      await templateAPI.create({ name: newTemplateName.trim(), type: 'phytosanitary', payload })
+      setNewTemplateName('')
+      await loadSavedTemplates()
+      toastSuccess('Plantilla guardada')
+    } catch (e: any) {
+      const msg = (e?.message || '').toString()
+      if (msg.includes('409')) {
+        toastError('Ya existe una plantilla con ese nombre')
+      } else {
+        console.error('Error guardando plantilla', e)
+        toastError('No se pudo guardar la plantilla')
+      }
+    }
+  }
+
+  const updateTemplatePayload = async (tpl: any) => {
+    try {
+      const payload = { formData }
+      await templateAPI.update(tpl._id, { name: tpl.name, payload })
+      await loadSavedTemplates()
+    } catch (e) {
+      console.error('Error actualizando plantilla', e)
+      toastError('No se pudo actualizar la plantilla')
+    }
+    toastSuccess('Plantilla actualizada')
+  }
+
+  // Último día: nube y local
+  const applyLastDay = async () => {
+    const payload = await loadLast()
+    if (!payload?.formData) { toastError('No hay un día previo guardado'); return }
+    const src = payload.formData as DailyPhytosanitaryRecord
+    const next: DailyPhytosanitaryRecord = {
+      date: new Date().toISOString().split('T')[0],
+      phytosanitaries: src.phytosanitaries || [],
+      notes: src.notes || '',
+      totalCost: 0,
+    }
+    setFormData(next)
+    setShowTemplates(false)
+    toastSuccess('Se ha aplicado el último día')
+  }
+
+  const saveLastDayToBackend = async (payload: { formData: DailyPhytosanitaryRecord }) => {
+    await saveLast(payload as any)
+  }
+
+  const startRenameTemplate = (_tpl: any) => {
+    // Renombrado gestionado por TemplatesMenu; noop aquí
+  }
+
+  //
+
+  const removePhytosanitary = (index: number) => {
+    setFormData(prev => {
+      const record = prev.phytosanitaries[index]
+      lastRemovedRef.current = { index, record }
+      toastShow('info', 'Producto eliminado', {
+        actionLabel: 'Deshacer',
+        onAction: () => {
+          setFormData(p => {
+            if (!lastRemovedRef.current) return p
+            const { index: idx, record: rec } = lastRemovedRef.current
+            const arr = [...p.phytosanitaries]
+            arr.splice(idx, 0, rec)
+            return { ...p, phytosanitaries: arr }
+          })
+          lastRemovedRef.current = null
+        }
+      })
+      return { ...prev, phytosanitaries: prev.phytosanitaries.filter((_, i) => i !== index) }
+    })
+  }
+
+  const duplicatePhytosanitary = (index: number) => {
+    setFormData(prev => {
+      const arr = [...prev.phytosanitaries]
+      const src = arr[index]
+      if (!src) return prev
+      const copy = { ...src }
+      arr.splice(index + 1, 0, copy)
+      return { ...prev, phytosanitaries: arr }
+    })
+    toastSuccess('Línea duplicada')
+  }
+
+  // Autosave unificado
+  useAutosaveDraft({
+    isOpen,
+    isReadyRef: draftReadyRef,
+    storageKey,
+    payload: { formData },
+    delay: 500,
+  })
+
+  const attemptClose = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(storageKey)
+      const current = JSON.stringify({ formData })
+      if (saved && saved !== current) {
+        const confirmLeave = window.confirm('Tienes cambios no guardados. ¿Cerrar sin guardar?')
+        if (!confirmLeave) return
+      }
+    } catch {}
+    onClose()
+  }, [formData, onClose, storageKey])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); attemptClose() }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'enter') {
+        e.preventDefault()
+        const form = document.getElementById('phyto-form') as HTMLFormElement | null
+        if (form) form.requestSubmit()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, attemptClose])
+
+  const { recentProductIds, pushRecent } = useRecentProducts('phyto:recentProducts', 5)
+  const { load: loadLast, save: saveLast } = useLastDay<any>(activityName, 'phytosanitary')
+
+  const handlePhytosanitaryTypeChange = async (index: number, productId: string) => {
 		if (!productId) return
 
 		try {
 			const product = availablePhytosanitaries.find(p => p._id === productId)
 			if (product) {
-				updatePhytosanitary(index, 'productId', productId)
-				updatePhytosanitary(index, 'phytosanitaryType', product.name)
-				updatePhytosanitary(index, 'price', product.pricePerUnit)
-				updatePhytosanitary(index, 'brand', product.brand || '')
-				updatePhytosanitary(index, 'supplier', product.supplier || '')
-				updatePhytosanitary(index, 'purchaseDate', product.purchaseDate || '')
-			}
-		} catch (error) {
+				// Actualizar en un único set para evitar estados intermedios y recalcular total al instante
+				setFormData(prev => {
+					const nextPhytos = prev.phytosanitaries.map((ph, i) => i === index ? {
+						...ph,
+						productId,
+						phytosanitaryType: product.name,
+						price: unitPriceFor(productId, ph.price, availablePhytosanitaries),
+						brand: product.brand || '',
+						supplier: product.supplier || '',
+						purchaseDate: product.purchaseDate || ''
+					} : ph)
+          const next = { ...prev, phytosanitaries: nextPhytos }
+					const totals = calculatePhytosanitaryTotals(next, availablePhytosanitaries)
+					return { ...next, totalCost: totals.total }
+				})
+        // Guardar recientes
+        pushRecent(productId)
+      }
+    } catch (error) {
 			console.error('Error loading product details:', error)
 		}
-	}
+  }
+  const { exportRows } = useExportCsv()
+  const onExportCsv = () => {
+    try {
+      const headers = ['Section','Name','Amount','Unit','Price','Cost','Notes','Date']
+      const rows: Array<Array<string | number>> = []
+      for (const p of formData.phytosanitaries) {
+        const product = availablePhytosanitaries.find(x => x._id === p.productId)
+        const unitPrice = Number(product?.pricePerUnit ?? p.price ?? 0)
+        const unit = (product?.unit || p.unit || p.phytosanitaryUnit || 'L') as any
+        const qty = Number(p.phytosanitaryAmount || 0)
+        const cost = qty * unitPrice
+        rows.push(['Phytosanitary', p.phytosanitaryType || (product?.name || ''), qty, unit, unitPrice, cost, formData.notes || '', formData.date])
+      }
+      const total = Number(calculateTotalCost())
+      rows.push(['Total','Day total','','','', total, formData.notes || '', formData.date])
+      exportRows(`phytosanitary_${activityName}_${formData.date}.csv`, headers, rows)
+      toastSuccess('CSV exportado')
+    } catch { toastError('No se pudo exportar el CSV') }
+  }
 
-	const calculateTotalCost = () => {
-		return formData.phytosanitaries.reduce((sum, p) => sum + p.cost, 0)
-	}
+  const calculateTotalCost = useCallback(() => {
+    const { total } = calculatePhytosanitaryTotals(formData, availablePhytosanitaries)
+    return total
+  }, [formData, availablePhytosanitaries])
 
-	const handleSubmit = async (e: React.FormEvent) => {
+  // Recalcular coste total al cambiar productos o cantidades
+  useEffect(() => {
+    if (!isOpen) return
+    setFormData(prev => ({ ...prev, totalCost: calculateTotalCost() }))
+  }, [calculateTotalCost, isOpen])
+
+  const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		setIsSubmitting(true)
 
@@ -153,10 +450,30 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 				newErrors.phytosanitaries = 'Debe añadir al menos un fitosanitario'
 			}
 
-			if (Object.keys(newErrors).length > 0) {
+      if (Object.keys(newErrors).length > 0) {
 				setErrors(newErrors)
+        // Scroll al primer error
+        const firstKey = Object.keys(newErrors)[0]
+        const el = document.querySelector('[data-error-anchor="' + firstKey + '"]') as HTMLElement | null
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
 				return
 			}
+
+      // Confirmación si stock insuficiente en alguna línea
+      let hasInsufficient = false
+      for (let i = 0; i < formData.phytosanitaries.length; i++) {
+        const p = formData.phytosanitaries[i]
+        if (!p.productId || !p.phytosanitaryAmount) continue
+        const info = stockByProduct[p.productId]
+        if (!info) continue
+        if (p.phytosanitaryAmount > (info.stock || 0)) { hasInsufficient = true; break }
+      }
+      if (hasInsufficient) {
+        const ok = window.confirm('Hay líneas con stock insuficiente. ¿Confirmas guardar igualmente?')
+        if (!ok) { setIsSubmitting(false); return }
+      }
 
 			const updatedFormData = {
 				...formData,
@@ -167,7 +484,12 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 				}))
 			}
 
-			// Llamar a la función onSubmit que ahora conectará con el backend
+      // Persistir "último día" local y subir a nube
+      try { localStorage.setItem(`phyto:last:${activityName}`, JSON.stringify({ formData: updatedFormData })) } catch {}
+      saveLastDayToBackend({ formData: updatedFormData as any })
+      try { localStorage.removeItem(storageKey) } catch {}
+
+      // Llamar a la función onSubmit que ahora conectará con el backend
 			await onSubmit(updatedFormData)
 			onClose()
 		} catch (error) {
@@ -183,7 +505,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 		}
 	}
 
-	if (!isOpen) return null
+  if (!isOpen) return (<></>)
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -230,36 +552,53 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 							)}
 						</div>
 
-						<div>
-							<div className="flex items-center justify-between mb-4">
-								<label className={`text-sm font-medium ${
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <label className={`text-sm font-medium ${
 									isDarkMode ? 'text-gray-300' : 'text-gray-700'
 								}`}>
 									Fitosanitarios
 								</label>
-								<button
-									type="button"
-									onClick={addPhytosanitary}
-									className="flex items-center space-x-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-								>
-									<Plus className="h-4 w-4" />
-									<span>Añadir Fitosanitario</span>
-								</button>
+                                <div className="flex items-center gap-2 relative">
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTemplates(v => !v)}
+                                            className={`${isDarkMode ? 'bg-orange-700 text-white hover:bg-orange-600' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'} px-3 py-1 rounded-lg text-sm`}
+                                        >
+                                            Usar Plantilla
+                                        </button>
+                                        {showTemplates && (
+                                            <TemplatesMenu
+                                                isDarkMode={isDarkMode}
+                                                isLoading={isLoadingTemplates}
+                                                savedTemplates={savedTemplates as any}
+                                                onApplyLastDay={applyLastDay}
+                                                onApplyQuick={() => applyTemplate()}
+                                                onUseSaved={(tpl: any) => applySavedTemplate(tpl)}
+                                                onUpdateSaved={(tpl: any) => updateTemplatePayload(tpl)}
+                                                onRenameStart={(tpl: any) => startRenameTemplate(tpl)}
+                                                onDelete={async (tpl: any) => { try { await templateAPI.delete(tpl._id); await loadSavedTemplates(); toastSuccess('Plantilla borrada') } catch { toastError('No se pudo borrar la plantilla') } }}
+                                                newTemplateName={newTemplateName}
+                                                onNewTemplateNameChange={setNewTemplateName}
+                                                onSaveCurrentAsTemplate={saveCurrentAsTemplate}
+                                            />
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={addPhytosanitary}
+                                        className="flex items-center space-x-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        <span>Añadir Fitosanitario</span>
+                                    </button>
+                                </div>
 							</div>
 
-							{formData.phytosanitaries.length === 0 ? (
-								<div className={`p-4 border-2 border-dashed rounded-lg text-center ${
-									isDarkMode ? 'border-gray-600 text-gray-400' : 'border-gray-300 text-gray-500'
-								}`}>
-									<p className="text-sm mb-2">No hay fitosanitarios añadidos</p>
-									<p className="text-xs">
-										{availablePhytosanitaries.length === 0 
-											? 'No hay fitosanitarios registrados. Ve a "Gestión > Productos y Precios" para añadir fitosanitarios.'
-											: 'Haz clic en "Añadir Fitosanitario" para comenzar'
-										}
-									</p>
-								</div>
-							) : (
+                            {formData.phytosanitaries.length === 0 ? (
+                                <EmptyState isDarkMode={isDarkMode} title="No hay fitosanitarios añadidos" subtitle={availablePhytosanitaries.length === 0 ? 'No hay fitosanitarios registrados. Ve a Gestión > Productos y Precios para añadir fitosanitarios.' : 'Haz clic en "Añadir Fitosanitario" para comenzar'} />
+                            ) : (
 								<div className="space-y-4">
 									{formData.phytosanitaries.map((phytosanitary, index) => (
 										<div key={index} className={`p-4 border rounded-lg transition-colors ${
@@ -267,43 +606,38 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 										}`}>
 											<div className="flex items-center justify-between mb-3">
 												<h4 className="font-medium">Fitosanitario {index + 1}</h4>
-												<button
-													type="button"
-													onClick={() => removePhytosanitary(index)}
-													className="text-red-500 hover:text-red-700 transition-colors"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                      type="button"
+                                                      onClick={() => removePhytosanitary(index)}
+                                                      className="text-red-500 hover:text-red-700 transition-colors"
+                                                  >
+                                                      <Trash2 className="h-4 w-4" />
+                                                  </button>
+                                                  <button type="button" onClick={() => duplicatePhytosanitary(index)} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-2 py-1 rounded text-xs`}>Duplicar</button>
+                                                </div>
 											</div>
 
-											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 												<div>
 													<label className={`block text-sm font-medium mb-2 ${
 														isDarkMode ? 'text-gray-300' : 'text-gray-700'
 													}`}>
-														Seleccionar Fitosanitario
+                                                        Seleccionar Fitosanitario
 													</label>
-													<select
-														value={phytosanitary.productId}
-														onChange={(e) => handlePhytosanitaryTypeChange(index, e.target.value)}
-														className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-															isDarkMode 
-																? 'bg-gray-700 border-gray-600 text-white' 
-																: 'bg-white border-gray-300 text-gray-900'
-														}`}
-													>
-														<option value="">
-															{availablePhytosanitaries.length === 0 
-																? 'No hay fitosanitarios disponibles' 
-																: 'Seleccionar fitosanitario'
-															}
-														</option>
-														{availablePhytosanitaries.map(product => (
-															<option key={product._id} value={product._id}>
-																{product.name} - {product.pricePerUnit}€/{product.unit}
-															</option>
-														))}
-													</select>
+                                                    <ProductSelect
+                                                        isDarkMode={isDarkMode}
+                                                        indexKey={index}
+                                                        value={phytosanitary.productId}
+                                                        options={availablePhytosanitaries as any}
+                                                        recentIds={recentProductIds}
+                                                        filterText={selectFilterTextByIndex[index] || ''}
+                                                        onFilterChange={(t) => setSelectFilterTextByIndex(prev => ({ ...prev, [index]: t }))}
+                                                        onChange={async (productId) => {
+                                                            await handlePhytosanitaryTypeChange(index, productId)
+                                                            scheduleInventoryFetch(productId)
+                                                        }}
+                                                    />
 												</div>
 
 												<div>
@@ -317,18 +651,36 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 															type="number"
 															step="0.01"
 															min="0"
-															value={phytosanitary.phytosanitaryAmount}
-															onChange={(e) => updatePhytosanitary(index, 'phytosanitaryAmount', parseFloat(e.target.value) || 0)}
+                                                        value={phytosanitary.phytosanitaryAmount}
+                    onChange={(e) => {
+                                                          const value = parseFloat(e.target.value) || 0
+                                                          updatePhytosanitary(index, 'phytosanitaryAmount', value)
+                      // validación inmediata usando cache local
+                      const cached = stockByProduct[phytosanitary.productId || '']
+                      if (phytosanitary.productId && cached && value > (cached.stock || 0)) {
+                        const path = `/inventario?productId=${phytosanitary.productId}`
+                        toastShow('error', `Stock insuficiente para ${phytosanitary.phytosanitaryType || 'producto'}. Disponible: ${cached.stock} ${cached.unit || 'u'}`, {
+                          actionLabel: 'Abrir inventario',
+                          onAction: () => navigate(path),
+                        })
+                      }
+                                                        }}
 															onFocus={handleNumberFocus}
+                    onKeyDown={preventInvalidNumberKeys}
 															className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
 																	? 'bg-gray-700 border-gray-600 text-white' 
 																	: 'bg-white border-gray-300 text-gray-900'
 															}`}
 														/>
-														<select
-															value={phytosanitary.unit || 'L'}
-															onChange={(e) => updatePhytosanitary(index, 'unit', e.target.value)}
+                                                    <select
+                                                        value={phytosanitary.unit || 'L'}
+                                                        onChange={(e) => {
+                                                            const u = e.target.value
+                                                            const allowed = ['L','ml','kg','g']
+                                                            if (!allowed.includes(u)) return
+                                                            updatePhytosanitary(index, 'unit', u)
+                                                        }}
 															className={`px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
 																	? 'bg-gray-700 border-gray-600 text-white' 
@@ -344,30 +696,31 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 												</div>
 											</div>
 
-											{phytosanitary.productId && (
+                                            {phytosanitary.productId && (
 												<div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
 													<div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
 														<div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Marca:
 															</span> {phytosanitary.brand}
-														</div>
-														<div>
-															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-																Proveedor:
-															</span> {phytosanitary.supplier}
-														</div>
+                                                    </div>
+                                                    <div>
+                                                        <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            Proveedor:
+                                                        </span> {phytosanitary.supplier || '—'}
+                                                    </div>
 														<div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Precio:
-															</span> {(phytosanitary.price || 0)}€/{phytosanitary.unit || 'L'}
+                                                        </span> {formatCurrencyEUR(Number(availablePhytosanitaries.find(p => p._id === phytosanitary.productId)?.pricePerUnit ?? phytosanitary.price ?? 0))}/{phytosanitary.unit || 'L'}
 														</div>
 													</div>
 													<div className="mt-2">
 														<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 															Coste:
-														</span> {(phytosanitary.phytosanitaryAmount * (phytosanitary.price || 0)).toFixed(2)}€
+                                                    </span> {formatCurrencyEUR(Number(phytosanitary.phytosanitaryAmount * ((availablePhytosanitaries.find(p => p._id === phytosanitary.productId)?.pricePerUnit ?? phytosanitary.price ?? 0))))}
 													</div>
+                                                    <StockBadge info={stockByProduct[phytosanitary.productId || '']} isDarkMode={isDarkMode} />
 												</div>
 											)}
 										</div>
@@ -399,30 +752,27 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 							/>
 						</div>
 
-						<div className={`p-4 rounded-lg ${
-							isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
-						}`}>
+                        <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
 							<div className="flex justify-between items-center">
 								<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 									Coste Total del Día:
 								</span>
-								<span className="text-lg font-bold text-orange-600">
-									{calculateTotalCost().toFixed(2)}€
-								</span>
+                                <span className="text-lg font-bold text-orange-600">{formatCurrencyEUR(Number(calculateTotalCost()))}</span>
 							</div>
 						</div>
 
-						<div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-inherit pb-6">
+                            <button type="button" onClick={() => { try { onExportCsv() } catch {} }} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar CSV</button>
 							<button
 								type="button"
-								onClick={onClose}
+                                onClick={attemptClose}
 								className={`px-4 py-2 border rounded-lg transition-colors ${
 									isDarkMode 
 										? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
 										: 'border-gray-300 text-gray-700 hover:bg-gray-50'
 								}`}
 							>
-								Cancelar
+                                Cancelar (Esc)
 							</button>
 							<button
 								type="submit"
@@ -434,9 +784,9 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 						</div>
 					</form>
 				</div>
-			</div>
-		</div>
-	)
+            </div>
+        </div>
+    )
 }
 
 export default PhytosanitaryDayModal

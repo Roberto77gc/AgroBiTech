@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
+import { authAPI } from './components/../services/api'
 import { Sprout, Users, BarChart3, Shield, ArrowRight, CheckCircle, Leaf } from 'lucide-react'
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import ToastProvider from './components/ui/ToastProvider'
 import AuthForm from './components/AuthForm'
 
 // Lazy loading para componentes pesados
@@ -26,16 +26,37 @@ function App() {
 	const [user, setUser] = useState<User | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 
-	useEffect(() => {
-		// Verificar si el usuario ya está autenticado
-		const token = localStorage.getItem('token')
-		if (token) {
-			// Aquí validarías el token con el backend
-			// Por ahora simulamos que es válido
-			setIsAuthenticated(true)
-		}
-		setIsLoading(false)
-	}, [])
+  useEffect(() => {
+    // Precargar usuario guardado para una UX más ágil
+    try {
+      const cached = localStorage.getItem('user')
+      if (cached) setUser(JSON.parse(cached))
+    } catch {}
+    // Validar token con backend cuando exista
+    const token = localStorage.getItem('token')
+    if (!token) { setIsLoading(false); return }
+    (async () => {
+      try {
+        const res = await authAPI.validate()
+        if (res?.valid) {
+          setIsAuthenticated(true)
+          setUser(res.user || null)
+        } else {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setIsAuthenticated(false)
+          setUser(null)
+        }
+      } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setIsAuthenticated(false)
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
+    })()
+  }, [])
 
 	const handleLogin = (userData: User) => {
 		setUser(userData)
@@ -53,29 +74,17 @@ function App() {
 	}
 
 	if (isAuthenticated) {
-		return (
-			<>
-				<Suspense fallback={<LoadingSpinner />}>
-					<Dashboard user={user} logout={handleLogout} />
-				</Suspense>
-				<ToastContainer
-					position="top-right"
-					autoClose={3000}
-					hideProgressBar={false}
-					newestOnTop={false}
-					closeOnClick
-					rtl={false}
-					pauseOnFocusLoss
-					draggable
-					pauseOnHover
-					theme="light"
-				/>
-			</>
-		)
+    return (
+      <ToastProvider>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Dashboard key={user?._id || 'dashboard'} user={user} logout={handleLogout} />
+        </Suspense>
+      </ToastProvider>
+    )
 	}
 
   return (
-    <>
+    <ToastProvider>
 			<div className="min-h-screen gradient-bg">
 				{/* Header */}
 				<header className="bg-white/80 backdrop-blur-sm border-b border-green-100 sticky top-0 z-50">
@@ -197,21 +206,7 @@ function App() {
 				</footer>
       </div>
 
-			{/* Sistema de notificaciones */}
-			<ToastContainer
-				position="top-right"
-				autoClose={3000}
-				hideProgressBar={false}
-				newestOnTop={false}
-				closeOnClick
-				rtl={false}
-				pauseOnFocusLoss
-				draggable
-				pauseOnHover
-				theme="light"
-				style={{ zIndex: 9999 }}
-			/>
-    </>
+    </ToastProvider>
   )
 }
 

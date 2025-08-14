@@ -1,4 +1,6 @@
 import React from 'react'
+import { downloadCsv } from '../hooks/useExportCsv'
+import { exportDailyPdfLike } from '../utils/pdf'
 import { X, Euro, Leaf, Shield, Droplets, Package } from 'lucide-react'
 
 interface CostBreakdownModalProps {
@@ -72,6 +74,38 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 		}
 	}
 
+	const exportCsv = () => {
+		try {
+			const lines: string[] = []
+			lines.push('Section,Name,Amount,Unit,Price,Cost')
+			for (const f of (costs?.fertilizers || [])) {
+				lines.push(['Fertilizer', f.name, String(f.amount), String(f.unit), String(f.price), String(f.cost)].join(','))
+			}
+			for (const p of (costs?.phytosanitaries || [])) {
+				lines.push(['Phytosanitary', p.name, String(p.amount), String(p.unit), String(p.price), String(p.cost)].join(','))
+			}
+			if (costs?.water) {
+				const w = costs.water
+				lines.push(['Water', 'Water', String(w.consumption), String(w.unit), String(w.price), String(w.cost)].join(','))
+			}
+			for (const o of (costs?.others || [])) {
+				lines.push(['Other', o.name, String(o.amount), String(o.unit), String(o.price), String(o.cost)].join(','))
+			}
+			downloadCsv(`cost_breakdown_${activityName}_${date}.csv`, lines)
+		} catch {}
+	}
+
+	const exportPdf = () => {
+		try {
+			const lines: string[] = []
+			for (const f of (costs?.fertilizers || [])) lines.push(`Fertilizante: ${f.name} - ${f.amount} ${f.unit} x ${formatCurrency(f.price)} = ${formatCurrency(f.cost)}`)
+			for (const p of (costs?.phytosanitaries || [])) lines.push(`Fitosanitario: ${p.name} - ${p.amount} ${p.unit} x ${formatCurrency(p.price)} = ${formatCurrency(p.cost)}`)
+			if (costs?.water) lines.push(`Agua: ${costs.water.consumption} ${costs.water.unit} x ${formatCurrency(costs.water.price)} = ${formatCurrency(costs.water.cost)}`)
+			for (const o of (costs?.others || [])) lines.push(`Otro: ${o.name} - ${o.amount} ${o.unit} x ${formatCurrency(o.price)} = ${formatCurrency(o.cost)}`)
+			exportDailyPdfLike(`parte_${activityName}_${date}.pdf`, { title: 'Parte Diario', date, lines })
+		} catch {}
+	}
+
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
@@ -118,13 +152,15 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 									</p>
 								</div>
 							</div>
-							<div className="text-right">
+					<div className="text-right flex items-center gap-2">
 								<div className="text-2xl font-bold text-green-600">
 									{formatCurrency(totalCost)}
 								</div>
 								<div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
 									Total del día
 								</div>
+						<button onClick={exportCsv} className={`ml-3 px-3 py-1 text-xs rounded ${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}>Exportar CSV</button>
+						<button onClick={exportPdf} className={`ml-1 px-3 py-1 text-xs rounded ${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}>Exportar PDF</button>
 							</div>
 						</div>
 					</div>

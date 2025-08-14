@@ -8,4 +8,6 @@ export declare const deleteInventoryItem: (req: Request, res: Response) => Promi
 export declare const adjustStock: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const getAlerts: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 export declare const markAlertAsRead: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const listMovements: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export declare const migrateLegacyInventory: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 //# sourceMappingURL=inventoryController.d.ts.map

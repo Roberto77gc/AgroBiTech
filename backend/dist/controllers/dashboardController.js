@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteWaterDay = exports.updateWaterDay = exports.addWaterDay = exports.deletePhytosanitaryDay = exports.updatePhytosanitaryDay = exports.addPhytosanitaryDay = exports.deleteFertigationDay = exports.updateFertigationDay = exports.addFertigationDay = exports.getActivityById = exports.deleteActivity = exports.updateActivity = exports.createActivity = exports.getActivities = exports.getAdvancedDashboard = exports.getDashboardStats = void 0;
 const Activity_1 = __importDefault(require("../models/Activity"));
+const inventoryService_1 = require("../services/inventoryService");
 const InventoryProduct_1 = __importDefault(require("../models/InventoryProduct"));
 const getDashboardStats = async (req, res) => {
     try {
@@ -395,6 +396,15 @@ const addFertigationDay = async (req, res) => {
             totalCost: totalCost || 0,
             notes
         };
+        const ops = (fertilizers || [])
+            .filter((f) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+            .map((f) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.unit || f.fertilizerUnit, context: { activityId, module: 'fertigation', dayIndex: (activity.fertigation?.dailyRecords?.length || 0) } }));
+        if (ops.length > 0) {
+            const result = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!result.ok) {
+                return res.status(400).json({ success: false, message: result.error, details: result.details });
+            }
+        }
         if (!activity.fertigation) {
             activity.fertigation = { enabled: true, dailyRecords: [] };
         }
@@ -431,7 +441,21 @@ const updateFertigationDay = async (req, res) => {
         if (dayIndexNum < 0 || dayIndexNum >= activity.fertigation.dailyRecords.length) {
             return res.status(400).json({ success: false, message: 'Índice de día inválido' });
         }
-        const oldCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost;
+        const oldRecord = activity.fertigation.dailyRecords[dayIndexNum];
+        const oldCost = oldRecord.totalCost;
+        const revertOps = (oldRecord.fertilizers || [])
+            .filter((f) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+            .map((f) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'add' }));
+        const newOps = (fertilizers || [])
+            .filter((f) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+            .map((f) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'subtract' }));
+        const ops = [...revertOps, ...newOps];
+        if (ops.length > 0) {
+            const stockResult = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!stockResult.ok) {
+                return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details });
+            }
+        }
         activity.fertigation.dailyRecords[dayIndexNum] = {
             date,
             fertilizers,
@@ -469,7 +493,17 @@ const deleteFertigationDay = async (req, res) => {
         if (dayIndexNum < 0 || dayIndexNum >= activity.fertigation.dailyRecords.length) {
             return res.status(400).json({ success: false, message: 'Índice de día inválido' });
         }
-        const deletedCost = activity.fertigation.dailyRecords[dayIndexNum].totalCost;
+        const deletedRecord = activity.fertigation.dailyRecords[dayIndexNum];
+        const ops = (deletedRecord.fertilizers || [])
+            .filter((f) => !!f.productId && (f.fertilizerAmount || 0) > 0)
+            .map((f) => ({ productId: String(f.productId), amount: Number(f.fertilizerAmount) || 0, amountUnit: f.fertilizerUnit || f.unit, operation: 'add', context: { activityId, module: 'fertigation', dayIndex: dayIndexNum } }));
+        if (ops.length > 0) {
+            const stockResult = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!stockResult.ok) {
+                return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details });
+            }
+        }
+        const deletedCost = deletedRecord.totalCost;
         activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost);
         activity.fertigation.dailyRecords.splice(dayIndexNum, 1);
         if (activity.fertigation.dailyRecords.length === 0) {
@@ -478,7 +512,8 @@ const deleteFertigationDay = async (req, res) => {
         await activity.save();
         return res.json({
             success: true,
-            message: 'Día de fertirriego eliminado exitosamente'
+            message: 'Día de fertirriego eliminado exitosamente',
+            activity
         });
     }
     catch (error) {
@@ -508,6 +543,15 @@ const addPhytosanitaryDay = async (req, res) => {
             totalCost: totalCost || 0,
             notes
         };
+        const ops = (phytosanitaries || [])
+            .filter((p) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+            .map((p) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.unit || p.phytosanitaryUnit, context: { activityId, module: 'phytosanitary', dayIndex: (activity.phytosanitary?.dailyRecords?.length || 0) } }));
+        if (ops.length > 0) {
+            const result = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!result.ok) {
+                return res.status(400).json({ success: false, message: result.error, details: result.details });
+            }
+        }
         if (!activity.phytosanitary) {
             activity.phytosanitary = { enabled: true, dailyRecords: [] };
         }
@@ -541,7 +585,21 @@ const updatePhytosanitaryDay = async (req, res) => {
         const idx = parseInt(dayIndex);
         if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length)
             return res.status(400).json({ success: false, message: 'Índice inválido' });
-        const oldCost = activity.phytosanitary.dailyRecords[idx].totalCost;
+        const oldRecord = activity.phytosanitary.dailyRecords[idx];
+        const oldCost = oldRecord.totalCost;
+        const revertOps = (oldRecord.phytosanitaries || [])
+            .filter((p) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+            .map((p) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'add', context: { activityId, module: 'phytosanitary', dayIndex: idx } }));
+        const newOps = (phytosanitaries || [])
+            .filter((p) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+            .map((p) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'subtract', context: { activityId, module: 'phytosanitary', dayIndex: idx } }));
+        const ops = [...revertOps, ...newOps];
+        if (ops.length > 0) {
+            const stockResult = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!stockResult.ok) {
+                return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details });
+            }
+        }
         activity.phytosanitary.dailyRecords[idx] = { date, phytosanitaries, totalCost: totalCost || 0, notes };
         activity.totalCost = (activity.totalCost || 0) - oldCost + (totalCost || 0);
         await activity.save();
@@ -565,13 +623,23 @@ const deletePhytosanitaryDay = async (req, res) => {
         const idx = parseInt(dayIndex);
         if (idx < 0 || idx >= activity.phytosanitary.dailyRecords.length)
             return res.status(400).json({ success: false, message: 'Índice inválido' });
-        const deletedCost = activity.phytosanitary.dailyRecords[idx].totalCost;
+        const deletedRecord = activity.phytosanitary.dailyRecords[idx];
+        const ops = (deletedRecord.phytosanitaries || [])
+            .filter((p) => !!p.productId && (p.phytosanitaryAmount || 0) > 0)
+            .map((p) => ({ productId: String(p.productId), amount: Number(p.phytosanitaryAmount) || 0, amountUnit: p.phytosanitaryUnit || p.unit, operation: 'add', context: { activityId, module: 'phytosanitary', dayIndex: idx } }));
+        if (ops.length > 0) {
+            const stockResult = await (0, inventoryService_1.adjustStockAtomically)(userId, ops);
+            if (!stockResult.ok) {
+                return res.status(400).json({ success: false, message: stockResult.error, details: stockResult.details });
+            }
+        }
+        const deletedCost = deletedRecord.totalCost;
         activity.totalCost = Math.max(0, (activity.totalCost || 0) - deletedCost);
         activity.phytosanitary.dailyRecords.splice(idx, 1);
         if (activity.phytosanitary.dailyRecords.length === 0)
             activity.phytosanitary.enabled = false;
         await activity.save();
-        return res.json({ success: true, message: 'Día de fitosanitarios eliminado' });
+        return res.json({ success: true, message: 'Día de fitosanitarios eliminado', activity });
     }
     catch (e) {
         console.error('Error deleting phytosanitary day:', e);
@@ -664,7 +732,7 @@ const deleteWaterDay = async (req, res) => {
         if (activity.water.dailyRecords.length === 0)
             activity.water.enabled = false;
         await activity.save();
-        return res.json({ success: true, message: 'Día de agua eliminado' });
+        return res.json({ success: true, message: 'Día de agua eliminado', activity });
     }
     catch (e) {
         console.error('Error deleting water day:', e);

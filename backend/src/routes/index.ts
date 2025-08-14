@@ -5,6 +5,7 @@ import inventoryRoutes from './inventory'
 import productRoutes from './products'
 import supplierRoutes from './suppliers'
 import purchaseRoutes from './purchases'
+import templateRoutes from './templates'
 
 const router = express.Router()
 
@@ -25,5 +26,6 @@ router.use('/inventory', inventoryRoutes)
 router.use('/products', productRoutes)
 router.use('/suppliers', supplierRoutes)
 router.use('/purchases', purchaseRoutes)
+router.use('/templates', templateRoutes)
 
 export default router

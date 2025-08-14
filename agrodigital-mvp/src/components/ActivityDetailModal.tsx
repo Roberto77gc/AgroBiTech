@@ -1,24 +1,29 @@
 import React, { useState } from 'react'
-import { X, Calendar, MapPin, Cloud, FileText, Euro, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2 } from 'lucide-react'
-import type { Activity, DailyFertigationRecord, DailyPhytosanitaryRecord } from '../types'
+import { X, Calendar, MapPin, Cloud, FileText, Euro, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2, History } from 'lucide-react'
+import type { Activity, DailyFertigationRecord, DailyPhytosanitaryRecord, DailyWaterRecord } from '../types'
 import FertigationDayModal from './FertigationDayModal'
 import PhytosanitaryDayModal from './PhytosanitaryDayModal'
 import WaterDayModal from './WaterDayModal'
 import CostBreakdownModal from './CostBreakdownModal'
+import InventoryMovementsModal from './InventoryMovementsModal'
 import { activityAPI } from '../services/api'
+import { formatCurrencyEUR } from '../utils/format'
+import { useToast } from './ui/ToastProvider'
 
 interface ActivityDetailModalProps {
 	isOpen: boolean
 	onClose: () => void
 	activity: Activity
 	isDarkMode: boolean
+  onChanged?: () => void
 }
 
 const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({ 
 	isOpen, 
 	onClose, 
 	activity, 
-	isDarkMode 
+	isDarkMode,
+  onChanged,
 }) => {
 	const [activityState, setActivityState] = useState<Activity>(activity)
 	const [showFertigationDayModal, setShowFertigationDayModal] = useState(false)
@@ -27,11 +32,21 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   const [showPhytosanitaryDayModal, setShowPhytosanitaryDayModal] = useState(false)
   const [selectedPhytoDay, setSelectedPhytoDay] = useState<DailyPhytosanitaryRecord | undefined>(undefined)
   const [selectedPhytoIndex, setSelectedPhytoIndex] = useState<number | null>(null)
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const { success: toastSuccess, error: toastError } = useToast()
   const [confirmState, setConfirmState] = useState<{ open: boolean; message: string; onConfirm: () => Promise<void> | void } | null>(null)
 	const [showWaterDayModal, setShowWaterDayModal] = useState(false)
+	const [selectedWaterDay, setSelectedWaterDay] = useState<DailyWaterRecord | undefined>(undefined)
+	const [selectedWaterIndex, setSelectedWaterIndex] = useState<number | null>(null)
 	const [showCostBreakdownModal, setShowCostBreakdownModal] = useState(false)
 	const [costBreakdownData, setCostBreakdownData] = useState<any>(null)
+  const [showMovementsModal, setShowMovementsModal] = useState(false)
+  const notifyChanged = () => {
+    try { onChanged?.() } catch {}
+  }
+
+
+  // Auto-ocultar toasts después de 2.5s
+  // toasts globales: no necesitamos efecto de autocierre aquí
 
 	const reloadActivity = async () => {
 		try {
@@ -74,12 +89,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 		})
 	}
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat('es-ES', {
-			style: 'currency',
-			currency: 'EUR'
-		}).format(amount)
-	}
+    const formatCurrency = (amount: number) => formatCurrencyEUR(Number(amount))
 
   const handleAddFertigationDay = () => {
     setSelectedDay(undefined)
@@ -94,21 +104,33 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   }
 
   const handleDeleteFertigationDay = async (index: number) => {
+    // Optimista: quitar visualmente mientras se procesa
+    const prev = activityState
+    const next = { ...activityState, fertigation: { ...activityState.fertigation!, dailyRecords: [...(activityState.fertigation?.dailyRecords || [])] } }
+    next.fertigation!.dailyRecords.splice(index, 1)
+    setActivityState(next as Activity)
     setConfirmState({
       open: true,
       message: '¿Estás seguro de eliminar este día de fertirriego?',
       onConfirm: async () => {
         try {
           const response = await activityAPI.deleteFertigationDay(activityState._id, index)
-          if (response.success) {
-            await reloadActivity()
-            setToast({ type: 'success', message: 'Día de fertirriego eliminado correctamente' })
+            if (response.success) {
+            if (response?.activity) {
+              setActivityState(response.activity)
+            } else {
+              await reloadActivity()
+            }
+            toastSuccess('Día de fertirriego eliminado correctamente')
+              notifyChanged()
           } else {
-            setToast({ type: 'error', message: 'No se pudo eliminar el día de fertirriego' })
+            setActivityState(prev)
+            toastError('No se pudo eliminar el día de fertirriego')
           }
         } catch (error) {
           console.error('Error eliminando día de fertirriego:', error)
-          setToast({ type: 'error', message: 'Error al eliminar el día de fertirriego' })
+          setActivityState(prev)
+          toastError('Error al eliminar el día de fertirriego')
         }
       }
     })
@@ -122,14 +144,20 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       } else {
         response = await activityAPI.addFertigationDay(activityState._id, dayData)
       }
-      if (!response.success) {
-        setToast({ type: 'error', message: 'No se pudo guardar el día de fertirriego' })
-      }
+      if (!response.success) toastError('No se pudo guardar el día de fertirriego')
+      // Ajuste de inventario ahora lo realiza el backend de forma atómica
       setShowFertigationDayModal(false)
       setSelectedDay(undefined)
       setSelectedFertigationIndex(null)
-      await reloadActivity()
-      setToast({ type: 'success', message: 'Día de fertirriego guardado correctamente' })
+      // Actualizar UI inmediatamente: si el backend devuelve la actividad, úsala; si no, recargar
+      if (response?.activity) {
+        setActivityState(response.activity)
+      } else {
+        await reloadActivity()
+      }
+      const dayTotal = typeof (dayData as any).totalCost === 'number' ? (dayData as any).totalCost : undefined
+      toastSuccess(`Día de fertirriego guardado${dayTotal != null ? ` · Total: ${formatCurrency(dayTotal)}` : ''}`)
+      notifyChanged()
     } catch (error) {
       console.error('Error saving fertigation day:', error)
     }
@@ -142,6 +170,10 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   }
 
   const handleDeletePhytosanitaryDay = async (index: number) => {
+    const prev = activityState
+    const next = { ...activityState, phytosanitary: { ...activityState.phytosanitary!, dailyRecords: [...(activityState.phytosanitary?.dailyRecords || [])] } }
+    next.phytosanitary!.dailyRecords.splice(index, 1)
+    setActivityState(next as Activity)
     setConfirmState({
       open: true,
       message: '¿Estás seguro de eliminar este día de fitosanitarios?',
@@ -149,14 +181,21 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
         try {
           const response = await activityAPI.deletePhytosanitaryDay(activityState._id, index)
           if (response.success) {
-            await reloadActivity()
-            setToast({ type: 'success', message: 'Día de fitosanitarios eliminado correctamente' })
+            if (response?.activity) {
+              setActivityState(response.activity)
+            } else {
+              await reloadActivity()
+            }
+            toastSuccess('Día de fitosanitarios eliminado correctamente')
+            notifyChanged()
           } else {
-            setToast({ type: 'error', message: 'No se pudo eliminar el día de fitosanitarios' })
+            setActivityState(prev)
+            toastError('No se pudo eliminar el día de fitosanitarios')
           }
         } catch (error) {
           console.error('Error eliminando día de fitosanitarios:', error)
-          setToast({ type: 'error', message: 'Error al eliminar el día de fitosanitarios' })
+          setActivityState(prev)
+          toastError('Error al eliminar el día de fitosanitarios')
         }
       }
     })
@@ -170,33 +209,93 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       } else {
         response = await activityAPI.addPhytosanitaryDay(activityState._id, dayData)
       }
-      if (!response.success) {
-        setToast({ type: 'error', message: 'No se pudo guardar el día de fitosanitarios' })
-      }
+      if (!response.success) toastError('No se pudo guardar el día de fitosanitarios')
+      // Ajuste de inventario ahora lo realiza el backend de forma atómica
       setShowPhytosanitaryDayModal(false)
       setSelectedPhytoDay(undefined)
       setSelectedPhytoIndex(null)
-      await reloadActivity()
-      setToast({ type: 'success', message: 'Día de fitosanitarios guardado correctamente' })
+      if (response?.activity) {
+        setActivityState(response.activity)
+      } else {
+        await reloadActivity()
+      }
+      const phytoTotal = typeof (dayData as any).totalCost === 'number' ? (dayData as any).totalCost : undefined
+      toastSuccess(`Día de fitosanitarios guardado${phytoTotal != null ? ` · Total: ${formatCurrency(phytoTotal)}` : ''}`)
+      notifyChanged()
     } catch (error) {
       console.error('Error saving phytosanitary day:', error)
     }
   }
 
 	const handleAddWaterDay = () => {
+		setSelectedWaterDay(undefined)
+		setSelectedWaterIndex(null)
 		setShowWaterDayModal(true)
+	}
+
+	const handleEditWaterDay = (day: DailyWaterRecord, index: number) => {
+		setSelectedWaterDay(day)
+		setSelectedWaterIndex(index)
+		setShowWaterDayModal(true)
+	}
+
+	const handleDeleteWaterDay = async (index: number) => {
+    const prev = activityState
+    const next = { ...activityState, water: { ...activityState.water!, dailyRecords: [...(activityState.water?.dailyRecords || [])] } }
+    next.water!.dailyRecords.splice(index, 1)
+    setActivityState(next as Activity)
+    setConfirmState({
+			open: true,
+			message: '¿Estás seguro de eliminar este día de agua?',
+			onConfirm: async () => {
+				try {
+					const response = await activityAPI.deleteWaterDay(activityState._id, index)
+            if (response.success) {
+              if (response?.activity) {
+                setActivityState(response.activity)
+              } else {
+                await reloadActivity()
+              }
+              toastSuccess('Día de agua eliminado correctamente')
+              notifyChanged()
+            } else {
+              setActivityState(prev)
+              toastError('No se pudo eliminar el día de agua')
+            }
+				} catch (error) {
+          console.error('Error eliminando día de agua:', error)
+          setActivityState(prev)
+          toastError('Error al eliminar el día de agua')
+				}
+			}
+		})
 	}
 
 	const handleWaterDaySubmit = async (dayData: any) => {
 		try {
-			const response = await activityAPI.addWaterDay(activityState._id, dayData)
-			if (!response.success) {
-				alert('Error al guardar día de agua: ' + response.message)
+			let response
+			if (selectedWaterIndex !== null) {
+				response = await activityAPI.updateWaterDay(activityState._id, selectedWaterIndex, dayData)
+			} else {
+				response = await activityAPI.addWaterDay(activityState._id, dayData)
 			}
+      if (!response.success) {
+        toastError('No se pudo guardar el día de agua')
+      }
 			setShowWaterDayModal(false)
-			await reloadActivity()
+			setSelectedWaterDay(undefined)
+      setSelectedWaterIndex(null)
+      if (response?.activity) {
+        setActivityState(response.activity)
+      } else {
+        await reloadActivity()
+      }
+      const waterTotal = typeof (dayData as any).cost === 'number' ? (dayData as any).cost : undefined
+      toastSuccess(`Día de agua guardado${waterTotal != null ? ` · Total: ${formatCurrency(waterTotal)}` : ''}`)
+      notifyChanged()
 		} catch (error) {
-			console.error('Error saving water day:', error)
+      console.error('Error saving water day:', error)
+      toastError('Error al guardar el día de agua')
 		}
 	}
 
@@ -237,7 +336,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 				isDarkMode ? 'bg-gray-800' : 'bg-white'
 			}`}>
 				{/* Header */}
-				<div className={`flex items-center justify-between p-6 border-b ${
+                <div className={`flex items-center justify-between p-6 border-b ${
 					isDarkMode ? 'border-gray-700' : 'border-gray-200'
 				}`}>
 					<div className="flex items-center space-x-3">
@@ -248,7 +347,15 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 							{activityState.name}
 						</h2>
 					</div>
-					<button
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowMovementsModal(true)}
+                        className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      >
+                        <History className="w-4 h-4" />
+                        Ver movimientos
+                      </button>
+                    <button
 						onClick={onClose}
 						className={`p-2 rounded-lg transition-colors ${
 							isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
@@ -256,6 +363,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					>
 						<X className="h-5 w-5" />
 					</button>
+                    </div>
 				</div>
 
 				{/* Content */}
@@ -392,9 +500,9 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 														<strong>Fertilizante {fIndex + 1}:</strong> {fertilizer.fertilizerType} - {fertilizer.fertilizerAmount} {fertilizer.fertilizerUnit}
 													</div>
 													{fertilizer.brand && (
-														<div className={`text-xs ml-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-															Marca: {fertilizer.brand} | Proveedor: {fertilizer.supplier} | Coste: {(fertilizer.fertilizerAmount * (fertilizer.price || 0)).toFixed(2)}€
-														</div>
+                                                        <div className={`text-xs ml-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                            Marca: {fertilizer.brand} | Proveedor: {fertilizer.supplier} | Coste: {formatCurrency(Number(fertilizer.fertilizerAmount * (fertilizer.price || 0)))}
+                                                        </div>
 													)}
 												</div>
 											))}
@@ -506,22 +614,33 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 								</button>
 							</div>
 
-							{activityState.water?.dailyRecords && activityState.water.dailyRecords.length > 0 ? (
-								<div className="space-y-3">
-									{activityState.water.dailyRecords.map((record, index) => (
-										<div key={index} className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}>
-											<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-												<strong>Consumo:</strong> {record.consumption} {record.unit}
-											</div>
-											{record.cost > 0 && (
-												<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-													<strong>Coste:</strong> {record.cost.toFixed(2)}€
-												</div>
-											)}
+					{activityState.water?.dailyRecords && activityState.water.dailyRecords.length > 0 ? (
+						<div className="space-y-3">
+							{activityState.water.dailyRecords.map((record, index) => (
+								<div key={index} className={`p-3 border rounded-lg ${isDarkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-200'}`}>
+									<div className="flex items-center justify-between mb-2">
+										<span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+											{record.date ? new Date(record.date).toLocaleDateString('es-ES') + ' - ' : ''}
+											Consumo: {record.consumption} {record.unit}
+										</span>
+										<div className="flex space-x-2">
+											<button onClick={() => handleEditWaterDay(record as unknown as DailyWaterRecord, index)} className="text-blue-500 hover:text-blue-700 transition-colors">
+												<Edit className="h-4 w-4" />
+											</button>
+											<button onClick={() => handleDeleteWaterDay(index)} className="text-red-500 hover:text-red-700 transition-colors">
+												<Trash2 className="h-4 w-4" />
+											</button>
 										</div>
-									))}
+									</div>
+									{record.cost > 0 && (
+										<div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+											<strong>Coste:</strong> {formatCurrency(Number(record.cost))}
+										</div>
+									)}
 								</div>
-							) : (
+							))}
+						</div>
+					) : (
 								<p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
 									No hay registros de consumo de agua
 								</p>
@@ -726,7 +845,12 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 				{showWaterDayModal && (
 					<WaterDayModal
 						isOpen={showWaterDayModal}
-						onClose={() => setShowWaterDayModal(false)}
+						onClose={() => {
+							setShowWaterDayModal(false)
+							setSelectedWaterDay(undefined)
+							setSelectedWaterIndex(null)
+						}}
+						existingDay={selectedWaterDay}
 						activityName={activityState.name}
 						isDarkMode={isDarkMode}
 						onSubmit={handleWaterDaySubmit}
@@ -744,14 +868,17 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						isDarkMode={isDarkMode}
 					/>
 				)}
-        {/* Toast */}
-        {toast && (
-          <div className="absolute top-4 right-4 z-50">
-            <div className={`px-4 py-3 rounded-lg shadow ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-              <p>{toast.message}</p>
-            </div>
-          </div>
+
+        {/* Inventory Movements Modal */}
+        {showMovementsModal && (
+          <InventoryMovementsModal
+            isOpen={showMovementsModal}
+            onClose={() => setShowMovementsModal(false)}
+            activityId={activityState._id}
+            isDarkMode={isDarkMode}
+          />
         )}
+        
 
         {/* Confirm Dialog */}
         {confirmState?.open && (

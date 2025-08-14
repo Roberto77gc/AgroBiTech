@@ -11,7 +11,8 @@ import {
 	Plus,
 	Info
 } from 'lucide-react'
-import type { FertigationData, PhytosanitaryData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority, ProductPrice, Supplier, ProductPurchase } from '../types'
+ import type { FertigationData, PhytosanitaryData, EnergyData, DailyFertigationRecord, FertilizerRecord, ActivityStatus, ActivityPriority, ProductPrice, Supplier, ProductPurchase } from '../types'
+ import { formatCurrencyEUR } from '../utils/format'
 import { productAPI, supplierAPI, purchaseAPI, inventoryAPI } from '../services/api'
 
 interface ActivityFormModalProps {
@@ -1033,7 +1034,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																			<option value="">Seleccionar fertilizante...</option>
 																			{Array.isArray(availableFertilizers) && availableFertilizers.map((product) => (
 																				<option key={product._id} value={product._id}>
-																					{product.name} - {product.pricePerUnit}€/{product.unit}
+                                                                                {product.name} - {formatCurrencyEUR(Number(product.pricePerUnit))}/{product.unit}
 																				</option>
 																			))}
 																		</select>
@@ -1077,7 +1078,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																			>
 																				<option value="kg">kg</option>
 																				<option value="g">g</option>
-																				<option value="l">L</option>
+                                                                                <option value="L">L</option>
 																				<option value="ml">ml</option>
 																			</select>
 																		</div>
@@ -1087,7 +1088,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																		<label className={`block text-xs font-medium mb-1 ${
 																			isDarkMode ? 'text-gray-400' : 'text-gray-600'
 																		}`}>
-																			Coste (€)
+                                                                                Coste (€)
 																		</label>
 																		<input
 																			type="number"
@@ -1231,9 +1232,9 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 																			: 'bg-white border-gray-300 text-gray-900'
 																	}`}
 																>
-																	<option value="L">L</option>
-																	<option value="m3">m³</option>
-																	<option value="gal">gal</option>
+                                                            <option value="m3">m³</option>
+                                                            <option value="L">L</option>
+                                                            <option value="gal">gal</option>
 																</select>
 															</div>
 														</div>
@@ -1242,7 +1243,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 															<label className={`block text-xs font-medium mb-1 ${
 																isDarkMode ? 'text-gray-400' : 'text-gray-600'
 															}`}>
-																Coste Total (€)
+                                                                Coste Total (€)
 															</label>
 															<input
 																type="number"
@@ -1599,7 +1600,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 										<label className={`block text-sm font-medium mb-2 ${
 											isDarkMode ? 'text-gray-300' : 'text-gray-700'
 										}`}>
-											Coste Diario (€)
+                                            Coste Diario (€)
 										</label>
 										<input
 											type="number"

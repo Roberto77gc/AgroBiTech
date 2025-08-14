@@ -13,6 +13,7 @@ import {
 	Filler
 } from 'chart.js'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
+import { formatCurrencyEUR } from '../utils/format'
 
 // Registrar componentes de Chart.js
 ChartJS.register(
@@ -81,9 +82,9 @@ export const ExpenseLineChart: React.FC<ChartProps & { data: ExpenseData[] }> = 
 				borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
 				borderWidth: 1,
 				callbacks: {
-					label: function(context: any) {
-						return `€${context.parsed.y.toFixed(2)}`
-					}
+                    label: function(context: any) {
+                        return formatCurrencyEUR(Number(context.parsed.y))
+                    }
 				}
 			}
 		},
@@ -110,9 +111,9 @@ export const ExpenseLineChart: React.FC<ChartProps & { data: ExpenseData[] }> = 
 					font: {
 						size: 12
 					},
-					callback: function(value: any) {
-						return `€${value}`
-					}
+                    callback: function(value: any) {
+                        return formatCurrencyEUR(Number(value))
+                    }
 				}
 			}
 		}
@@ -170,10 +171,10 @@ export const CategoryBarChart: React.FC<ChartProps & { data: CategoryData[] }> =
 				borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
 				borderWidth: 1,
 				callbacks: {
-					label: function(context: any) {
+                    label: function(context: any) {
 						const dataIndex = context.dataIndex
 						const percentage = data[dataIndex]?.percentage || 0
-						return `${context.parsed.y.toFixed(2)}€ (${percentage}%)`
+                        return `${formatCurrencyEUR(Number(context.parsed.y))} (${percentage}%)`
 					}
 				}
 			}
@@ -202,9 +203,9 @@ export const CategoryBarChart: React.FC<ChartProps & { data: CategoryData[] }> =
 					font: {
 						size: 12
 					},
-					callback: function(value: any) {
-						return `€${value}`
-					}
+                    callback: function(value: any) {
+                        return formatCurrencyEUR(Number(value))
+                    }
 				}
 			}
 		}
@@ -268,10 +269,10 @@ export const InventoryDoughnutChart: React.FC<ChartProps & { data: CategoryData[
 				borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
 				borderWidth: 1,
 				callbacks: {
-					label: function(context: any) {
+                    label: function(context: any) {
 						const dataIndex = context.dataIndex
 						const percentage = data[dataIndex]?.percentage || 0
-						return `${context.label}: €${context.parsed.toFixed(2)} (${percentage}%)`
+                        return `${context.label}: ${formatCurrencyEUR(Number(context.parsed))} (${percentage}%)`
 					}
 				}
 			}

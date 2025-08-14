@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Plus, Edit, Trash2, ShoppingCart, Search, Calendar, DollarSign, Package } from 'lucide-react'
 import type { ProductPurchase, ProductPrice, Supplier } from '../types'
 import { productAPI, supplierAPI, purchaseAPI } from '../services/api'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
 
 interface PurchaseRegistrationModalProps {
 	isOpen: boolean
@@ -15,6 +15,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	onClose, 
 	isDarkMode 
 }) => {
+  const { success: toastSuccess, error: toastError } = useToast()
 	const [purchases, setPurchases] = useState<ProductPurchase[]>([])
 	const [filteredPurchases, setFilteredPurchases] = useState<ProductPurchase[]>([])
 	const [products, setProducts] = useState<ProductPrice[]>([])
@@ -59,9 +60,9 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 	}, [formData.pricePerUnit, formData.quantity])
 
 	const loadData = async () => {
-		try {
-			setIsLoading(true)
-			const [productsResponse, suppliersResponse, purchasesResponse] = await Promise.all([
+    try {
+      setIsLoading(true)
+      const [productsResponse, suppliersResponse, purchasesResponse] = await Promise.all([
 				productAPI.getAll(),
 				supplierAPI.getAll(),
 				purchaseAPI.getAll()
@@ -78,9 +79,9 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 			if (purchasesResponse.success) {
 				setPurchases(purchasesResponse.purchases)
 			}
-		} catch (error) {
-			console.error('Error loading data:', error)
-			toast.error('Error al cargar datos')
+    } catch (error) {
+      console.error('Error loading data:', error)
+      toastError('Error al cargar datos')
 		} finally {
 			setIsLoading(false)
 		}
@@ -127,22 +128,22 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		
 		if (editingPurchase) {
 			// Actualizar compra existente
-			try {
-				await purchaseAPI.update(editingPurchase._id, formData)
-				toast.success('Compra actualizada exitosamente')
-			} catch (error) {
-				console.error('Error updating purchase:', error)
-				toast.error('Error al actualizar la compra')
+      try {
+        await purchaseAPI.update(editingPurchase._id, formData)
+        toastSuccess('Compra actualizada exitosamente')
+    } catch (error) {
+      console.error('Error updating purchase:', error)
+      toastError('Error al actualizar la compra')
 			}
 		} else {
 			// Añadir nueva compra
-			try {
-				await purchaseAPI.create(formData)
-				toast.success('Compra registrada exitosamente')
-			} catch (error) {
-				console.error('Error adding purchase:', error)
-				toast.error('Error al registrar la compra')
-			}
+      try {
+        await purchaseAPI.create(formData)
+        toastSuccess('Compra registrada exitosamente')
+      } catch (error) {
+        console.error('Error adding purchase:', error)
+        toastError('Error al registrar la compra')
+      }
 		}
 		
 		// Limpiar formulario
@@ -183,14 +184,14 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 
 	const handleDelete = async (purchaseId: string) => {
 		if (window.confirm('¿Estás seguro de que quieres eliminar esta compra?')) {
-			try {
-				await purchaseAPI.delete(purchaseId)
-				toast.success('Compra eliminada exitosamente')
-				loadData()
-			} catch (error) {
-				console.error('Error deleting purchase:', error)
-				toast.error('Error al eliminar la compra')
-			}
+      try {
+        await purchaseAPI.delete(purchaseId)
+        toastSuccess('Compra eliminada exitosamente')
+        loadData()
+      } catch (error) {
+        console.error('Error deleting purchase:', error)
+        toastError('Error al eliminar la compra')
+      }
 		}
 	}
 

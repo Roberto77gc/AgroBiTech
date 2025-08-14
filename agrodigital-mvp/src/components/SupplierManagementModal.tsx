@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Plus, Edit, Trash2, Building2, Search, Star } from 'lucide-react'
 import type { Supplier } from '../types'
 import { supplierAPI } from '../services/api'
-import { toast } from 'react-toastify'
+import { useToast } from './ui/ToastProvider'
 
 interface SupplierManagementModalProps {
 	isOpen: boolean
@@ -15,6 +15,7 @@ const SupplierManagementModal: React.FC<SupplierManagementModalProps> = ({
 	onClose,
 	isDarkMode
 }) => {
+  const { success: toastSuccess, error: toastError } = useToast()
 	const [suppliers, setSuppliers] = useState<Supplier[]>([])
 	const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([])
 	const [searchTerm, setSearchTerm] = useState('')
@@ -58,14 +59,14 @@ const SupplierManagementModal: React.FC<SupplierManagementModalProps> = ({
 		try {
 			setIsLoading(true)
 			const response = await supplierAPI.getAll()
-			if (response.success) {
-				setSuppliers(response.suppliers)
-			} else {
-				toast.error('Error al cargar proveedores')
-			}
+            if (response.success) {
+                setSuppliers(response.suppliers)
+            } else {
+                toastError('Error al cargar proveedores')
+            }
 		} catch (error) {
 			console.error('Error loading suppliers:', error)
-			toast.error('Error al cargar proveedores')
+            toastError('Error al cargar proveedores')
 		} finally {
 			setIsLoading(false)
 		}
@@ -82,8 +83,8 @@ const SupplierManagementModal: React.FC<SupplierManagementModalProps> = ({
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
 		
-		if (!formData.name) {
-			toast.error('Por favor ingresa el nombre del proveedor')
+        if (!formData.name) {
+            toastError('Por favor ingresa el nombre del proveedor')
 			return
 		}
 
@@ -98,27 +99,27 @@ const SupplierManagementModal: React.FC<SupplierManagementModalProps> = ({
 			if (editingSupplier) {
 				// Actualizar proveedor existente
 				const response = await supplierAPI.update(editingSupplier._id, supplierData)
-				if (response.success) {
-					toast.success('Proveedor actualizado correctamente')
+                if (response.success) {
+                    toastSuccess('Proveedor actualizado correctamente')
 					await loadSuppliers()
 					handleCloseForm()
 				} else {
-					toast.error('Error al actualizar proveedor')
+                    toastError('Error al actualizar proveedor')
 				}
 			} else {
 				// Crear nuevo proveedor
 				const response = await supplierAPI.create(supplierData)
-				if (response.success) {
-					toast.success('Proveedor creado correctamente')
+                if (response.success) {
+                    toastSuccess('Proveedor creado correctamente')
 					await loadSuppliers()
 					handleCloseForm()
 				} else {
-					toast.error('Error al crear proveedor')
+                    toastError('Error al crear proveedor')
 				}
 			}
 		} catch (error) {
 			console.error('Error saving supplier:', error)
-			toast.error('Error al guardar proveedor')
+            toastError('Error al guardar proveedor')
 		} finally {
 			setIsLoading(false)
 		}
@@ -147,15 +148,15 @@ const SupplierManagementModal: React.FC<SupplierManagementModalProps> = ({
 		try {
 			setIsLoading(true)
 			const response = await supplierAPI.delete(supplierId)
-			if (response.success) {
-				toast.success('Proveedor eliminado correctamente')
+            if (response.success) {
+                toastSuccess('Proveedor eliminado correctamente')
 				await loadSuppliers()
 			} else {
-				toast.error('Error al eliminar proveedor')
+                toastError('Error al eliminar proveedor')
 			}
 		} catch (error) {
 			console.error('Error deleting supplier:', error)
-			toast.error('Error al eliminar proveedor')
+            toastError('Error al eliminar proveedor')
 		} finally {
 			setIsLoading(false)
 		}

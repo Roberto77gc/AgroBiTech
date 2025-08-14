@@ -1,0 +1,15 @@
+{
+  "name": "agrodigital",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build:client": "npm --prefix agrodigital-mvp run build",
+    "build:server": "npm --prefix backend run build",
+    "build": "npm run build:client && npm run build:server",
+    "start": "npm --prefix backend run start",
+    "start:all": "npm run build && npm run start",
+    "dev": "npm --prefix agrodigital-mvp run build -- --watch & npm --prefix backend run dev"
+  }
+}
+
+

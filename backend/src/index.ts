@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -12,6 +14,7 @@ import productRoutes from './routes/products';
 import supplierRoutes from './routes/suppliers';
 import purchaseRoutes from './routes/purchases';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import templateRoutes from './routes/templates';
 
 // Load environment variables
 dotenv.config();
@@ -81,11 +84,28 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/purchases', purchaseRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Legacy routes for compatibility
 app.use('/', authRoutes);
 app.use('/activities', dashboardRoutes);
 app.use('/api/actividades', dashboardRoutes);
+
+// Serve frontend static files (SPA) from Vite build
+const clientDistPath = path.resolve(__dirname, '../../agrodigital-mvp/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  // SPA fallback: send index.html for non-API routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    const indexHtml = path.join(clientDistPath, 'index.html');
+    if (fs.existsSync(indexHtml)) {
+      return res.sendFile(indexHtml);
+    }
+    return next();
+  });
+}
 
 // Root route
 app.get('/', (_req, res) => {

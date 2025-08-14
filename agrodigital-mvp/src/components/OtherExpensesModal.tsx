@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Trash2, DollarSign, Users, Wrench, Package, Truck } from 'lucide-react'
 import type { OtherExpenseRecord, ProductPrice } from '../types'
+import { formatCurrencyEUR } from '../utils/format'
 import { productAPI } from '../services/api'
 
 interface OtherExpensesModalProps {
@@ -302,9 +303,9 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 																: 'Seleccionar tipo de gasto'
 															}
 														</option>
-														{availableProducts.map(product => (
+                                                    {availableProducts.map(product => (
 															<option key={product._id} value={product._id}>
-																{product.name} - {product.pricePerUnit}€/{product.unit}
+                                                            {product.name} - {formatCurrencyEUR(Number(product.pricePerUnit))}/{product.unit}
 															</option>
 														))}
 													</select>
@@ -366,16 +367,16 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 																Proveedor:
 															</span> {expense.supplier}
 														</div>
-														<div>
+                                                        <div>
 															<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 																Precio:
-															</span> {(expense.price || 0)}€/{expense.unit || 'unidad'}
+                                                            </span> {formatCurrencyEUR(Number(expense.price || 0))}/{expense.unit || 'unidad'}
 														</div>
 													</div>
 													<div className="mt-2">
 														<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 															Coste:
-														</span> {(expense.expenseAmount * (expense.price || 0)).toFixed(2)}€
+                                                        </span> {formatCurrencyEUR(Number(expense.expenseAmount * (expense.price || 0)))}
 													</div>
 												</div>
 											)}
@@ -401,9 +402,9 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 								<span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 									Coste Total de Otros Gastos:
 								</span>
-								<span className="text-lg font-bold text-purple-600">
-									{calculateTotalCost().toFixed(2)}€
-								</span>
+                                <span className="text-lg font-bold text-purple-600">
+                                    {formatCurrencyEUR(Number(calculateTotalCost()))}
+                                </span>
 							</div>
 						</div>
 

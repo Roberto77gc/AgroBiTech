@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
@@ -17,6 +19,7 @@ const products_1 = __importDefault(require("./routes/products"));
 const suppliers_1 = __importDefault(require("./routes/suppliers"));
 const purchases_1 = __importDefault(require("./routes/purchases"));
 const errorHandler_1 = require("./middleware/errorHandler");
+const templates_1 = __importDefault(require("./routes/templates"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
@@ -67,9 +70,23 @@ app.use('/api/inventory', inventory_1.default);
 app.use('/api/products', products_1.default);
 app.use('/api/suppliers', suppliers_1.default);
 app.use('/api/purchases', purchases_1.default);
+app.use('/api/templates', templates_1.default);
 app.use('/', auth_1.default);
 app.use('/activities', dashboard_1.default);
 app.use('/api/actividades', dashboard_1.default);
+const clientDistPath = path_1.default.resolve(__dirname, '../../agrodigital-mvp/dist');
+if (fs_1.default.existsSync(clientDistPath)) {
+    app.use(express_1.default.static(clientDistPath));
+    app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api'))
+            return next();
+        const indexHtml = path_1.default.join(clientDistPath, 'index.html');
+        if (fs_1.default.existsSync(indexHtml)) {
+            return res.sendFile(indexHtml);
+        }
+        return next();
+    });
+}
 app.get('/', (_req, res) => {
     res.status(200).json({
         success: true,

@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [
 		react(),
 		visualizer({
-			open: true,
+			open: false,
 			gzipSize: true,
 			brotliSize: true,
 			filename: 'dist/stats.html'
@@ -20,7 +20,7 @@ export default defineConfig({
 					// Separar React y React DOM
 					vendor: ['react', 'react-dom'],
 					// Separar librerías de UI
-					ui: ['lucide-react', 'react-toastify']
+					ui: ['lucide-react']
 				}
 			}
 		},
