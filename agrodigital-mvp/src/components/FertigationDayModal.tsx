@@ -21,8 +21,10 @@ import { convertAmount } from '../utils/units'
 import { unitPriceFor } from '../domain/validation'
 import { createFertigationTemplate } from '../domain/templates'
 import OtherExpensesModal from './OtherExpensesModal'
+import { exportDailyPdfLike } from '../utils/pdf'
 import { useToast } from './ui/ToastProvider'
 import { useNavigate } from 'react-router-dom'
+import { validatePositiveNumberField, validateUnitForType } from '../utils/validation'
 
 interface FertigationDayModalProps {
 	isOpen: boolean
@@ -71,6 +73,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     const lastRemovedRef = useRef<{ index: number; record: FertilizerRecord } | null>(null)
     // Productos recientes (se persisten en localStorage al seleccionar). Si no se usan en UI, no declaramos estado para evitar warnings.
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+    const [inventoryLastSyncAt, setInventoryLastSyncAt] = useState<number | null>(null)
     const dateInputRef = useRef<HTMLInputElement | null>(null)
     // Borrador y autosave
     const storageKey = useMemo(() => `fertigation:draft:${activityName || 'default'}`, [activityName])
@@ -97,6 +100,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                         }
                         return next
                     })
+                    setInventoryLastSyncAt(Date.now())
                 } catch {}
             }, 150)
         }
@@ -434,7 +438,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	}
 
     const { exportRows } = useExportCsv()
-    const exportCsv = () => {
+		const exportCsv = () => {
         try {
             const headers = ['Section','Name','Amount','Unit','Price','Cost','Notes','Date']
             const rows: Array<Array<string | number>> = []
@@ -466,6 +470,33 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
             toastError('No se pudo exportar el CSV')
         }
     }
+
+		const exportPdf = () => {
+			try {
+				const lines: string[] = []
+				for (const f of formData.fertilizers) {
+					const product = f.productId ? productById.get(f.productId) : undefined
+					const unitPrice = Number(product?.pricePerUnit ?? f.price ?? 0)
+					const unit = (product?.unit || f.unit || 'kg') as any
+					const qty = convertAmount(Number(f.fertilizerAmount || 0), (f.unit as any) || unit, unit)
+					const cost = qty * unitPrice
+					lines.push(`Fertilizante: ${f.fertilizerType || (product?.name || '')} - ${qty} ${unit} x €${unitPrice.toFixed(4)} = €${cost.toFixed(2)}`)
+				}
+				const water = availableFertilizers.find(p => p.type === 'water')
+				if (water) {
+					const unit = (water.unit || 'L') as any
+					const price = Number(water.pricePerUnit || 0)
+					const qty = convertAmount(Number(formData.waterConsumption || 0), formData.waterUnit as any, unit)
+					const cost = qty * price
+					lines.push(`Agua: ${qty} ${unit} x €${price.toFixed(4)} = €${cost.toFixed(2)}`)
+				}
+				for (const e of otherExpenses) {
+					const cost = Number(e.expenseAmount) * Number(e.price || 0)
+					lines.push(`Otro: ${e.expenseType} - ${e.expenseAmount} ${e.unit || 'unidad'} x €${Number(e.price || 0).toFixed(4)} = €${cost.toFixed(2)}`)
+				}
+				exportDailyPdfLike(`fertigation_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Fertirriego', date: formData.date, lines })
+			} catch {}
+		}
 
 	const handleFertilizerTypeChange = async (index: number, productId: string) => {
 		console.log('Seleccionando producto:', productId, 'para índice:', index)
@@ -925,21 +956,27 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 															step="0.01"
 															min="0"
 															value={fertilizer.fertilizerAmount}
-                                                        onChange={(e) => {
-								const value = sanitizeNumber(e.target.value)
-                                                            const unitPrice = unitPriceFor(fertilizer.productId, fertilizer.price, availableFertilizers)
-                                                            updateFertilizer(index, 'fertilizerAmount', value)
-                                                            updateFertilizer(index, 'price', unitPrice)
-                                                            // validación inmediata de stock usando cache local
-                                                            const cached = stockByProduct[fertilizer.productId || '']
-                                                            if (fertilizer.productId && cached && value > (cached.stock || 0)) {
-                                                                const path = `/inventario?productId=${fertilizer.productId}`
-                                                                toastShow('error', `Stock insuficiente para ${fertilizer.fertilizerType || 'producto'}. Disponible: ${cached.stock} ${cached.unit || 'u'}`, {
-                                                                    actionLabel: 'Abrir inventario',
-                                                                    onAction: () => navigate(path),
-                                                                })
-                                                            }
-                                                        }}
+														onChange={(e) => {
+															const v = validatePositiveNumberField(e.target.value, Number(fertilizer.fertilizerAmount || 0))
+															if (v.error) {
+																setErrors(prev => ({ ...prev, [`fertilizerAmount_${index}`]: v.error as string }))
+															} else {
+																setErrors(prev => { const n: any = { ...prev }; delete n[`fertilizerAmount_${index}`]; return n })
+																const value = sanitizeNumber(String(v.value))
+																const unitPrice = unitPriceFor(fertilizer.productId, fertilizer.price, availableFertilizers)
+																updateFertilizer(index, 'fertilizerAmount', value)
+																updateFertilizer(index, 'price', unitPrice)
+																// validación inmediata de stock usando cache local
+																const cached = stockByProduct[fertilizer.productId || '']
+																if (fertilizer.productId && cached && value > (cached.stock || 0)) {
+																	const path = `/inventario?productId=${fertilizer.productId}`
+																	toastShow('error', `Stock insuficiente para ${fertilizer.fertilizerType || 'producto'}. Disponible: ${cached.stock} ${cached.unit || 'u'}`, {
+																		actionLabel: 'Abrir inventario',
+																		onAction: () => navigate(path),
+																	})
+																}
+															}
+														}}
                                                             onFocus={handleNumberFocus}
                                                             onKeyDown={preventInvalidNumberKeys}
 															onBlur={handleNumberBlur}
@@ -951,7 +988,13 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 														/>
 														<select
 															value={fertilizer.unit || 'kg'}
-															onChange={(e) => updateFertilizer(index, 'unit', e.target.value)}
+														onChange={(e) => {
+															const u = e.target.value
+                                                            const ok = validateUnitForType(u, ['kg','g','L','ml'])
+															if (!ok.ok) { setErrors(prev => ({ ...prev, [`fertilizerUnit_${index}`]: ok.message || 'Unidad inválida' })); return }
+															setErrors(prev => { const n: any = { ...prev }; delete n[`fertilizerUnit_${index}`]; return n })
+															updateFertilizer(index, 'unit', u)
+														}}
 															className={`px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
 																	? 'bg-gray-700 border-gray-600 text-white' 
@@ -963,7 +1006,33 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 															<option value="L">L</option>
 															<option value="ml">ml</option>
 														</select>
-													</div>
+													{errors[`fertilizerAmount_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`fertilizerAmount_${index}`]}</p>)}
+													{errors[`fertilizerUnit_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`fertilizerUnit_${index}`]}</p>)}
+                                </div>
+                                <div className="hidden md:flex items-center gap-2 ml-2 text-xs">
+                                    {inventoryLastSyncAt && (
+                                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            Inventario sincronizado {new Date(inventoryLastSyncAt).toLocaleTimeString()}
+                                        </span>
+                                    )}
+                                    <button type="button" onClick={async () => {
+                                        try {
+                                            const ids = Array.from(new Set(formData.fertilizers.map(f => f.productId).filter(Boolean))) as string[]
+                                            if (ids.length === 0) return
+                                            const mapRes = await inventoryAPI.getByProducts(ids)
+                                            const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = mapRes?.items || {}
+                                            setStockByProduct(prev => {
+                                                const next = { ...prev }
+                                                for (const id of ids) {
+                                                    const it = itemsMap[id]
+                                                    next[id] = { stock: Number(it?.currentStock) || 0, unit: it?.unit || prev[id]?.unit || 'kg' }
+                                                }
+                                                return next
+                                            })
+                                            setInventoryLastSyncAt(Date.now())
+                                        } catch {}
+                                    }} className={`${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-2 py-1 rounded`}>Revalidar inventario</button>
+                                </div>
 												</div>
 											</div>
 
@@ -1175,16 +1244,41 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                                     </span>
                                 </div>
                                 <div className="h-px bg-gray-300 dark:bg-gray-600" />
-                                <div className="flex justify-between items-center">
-                                    <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Coste Total del Día:</span>
-                                    <span className="text-lg font-bold text-green-600">{formatCurrencyEUR(Number(calculateTotalCost()))}</span>
-                                </div>
+                                {(() => {
+                                    const fertSubtotal = formData.fertilizers.reduce((s, f) => {
+                                        const product = f.productId ? productById.get(f.productId) : undefined
+                                        const unitPrice = Number(product?.pricePerUnit ?? f.price ?? 0)
+                                        const unit = (product?.unit || f.unit || 'kg') as any
+                                        const qty = convertAmount(Number(f.fertilizerAmount || 0), (f.unit as any) || unit, unit)
+                                        return s + (qty * unitPrice)
+                                    }, 0)
+                                    const water = availableFertilizers.find(p => p.type === 'water')
+                                    const waterUnit = (water?.unit || 'L') as any
+                                    const waterPrice = Number(water?.pricePerUnit || 0)
+                                    const waterQty = convertAmount(Number(formData.waterConsumption || 0), formData.waterUnit as any, waterUnit)
+                                    const waterSubtotal = waterQty * waterPrice
+                                    const othersSubtotal = otherExpenses.reduce((s, e) => s + e.expenseAmount * (e.price || 0), 0)
+                                    const total = fertSubtotal + waterSubtotal + othersSubtotal
+                                    const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0
+                                    return (
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Coste Total del Día:</span>
+                                                <span className="text-lg font-bold text-green-600">{formatCurrencyEUR(total)}</span>
+                                            </div>
+                                            <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                Fertilizantes: {pct(fertSubtotal)}% · Agua: {pct(waterSubtotal)}% · Otros: {pct(othersSubtotal)}%
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                             </div>
 						</div>
 
 						{/* Actions */}
                         <div className="flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-inherit pb-6">
-                            <button type="button" onClick={exportCsv} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar CSV</button>
+							<button type="button" onClick={exportCsv} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar CSV</button>
+							<button type="button" onClick={exportPdf} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar PDF</button>
                             <button
                                 type="button"
                                 onClick={() => {

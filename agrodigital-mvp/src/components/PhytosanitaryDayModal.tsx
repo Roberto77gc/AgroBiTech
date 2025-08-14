@@ -19,6 +19,8 @@ import { formatCurrencyEUR } from '../utils/format'
 import { unitPriceFor } from '../domain/validation'
 import { useToast } from './ui/ToastProvider'
 import { useNavigate } from 'react-router-dom'
+import { exportDailyPdfLike } from '../utils/pdf'
+import { validatePositiveNumberField, validateUnitForType } from '../utils/validation'
 
 type PhytosanitaryRecord = GlobalPhytosanitaryRecord
 
@@ -63,6 +65,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
   // Replaced by useRecentProducts
   const lastRemovedRef = useRef<{ index: number; record: PhytosanitaryRecord } | null>(null)
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [inventoryLastSyncAt, setInventoryLastSyncAt] = useState<number | null>(null)
   const storageKey = useMemo(() => `phyto:draft:${activityName || 'default'}`, [activityName])
   const draftReadyRef = useRef(false)
   const preventInvalidNumberKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -94,6 +97,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
             }
             return next
           })
+          setInventoryLastSyncAt(Date.now())
         } catch {}
       }, 150)
     }
@@ -424,6 +428,21 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
     } catch { toastError('No se pudo exportar el CSV') }
   }
 
+  const onExportPdf = () => {
+    try {
+      const lines: string[] = []
+      for (const p of formData.phytosanitaries) {
+        const product = availablePhytosanitaries.find(x => x._id === p.productId)
+        const unitPrice = Number(product?.pricePerUnit ?? p.price ?? 0)
+        const unit = (product?.unit || p.unit || p.phytosanitaryUnit || 'L') as any
+        const qty = Number(p.phytosanitaryAmount || 0)
+        const cost = qty * unitPrice
+        lines.push(`Fitosanitario: ${p.phytosanitaryType || (product?.name || '')} - ${qty} ${unit} x €${unitPrice.toFixed(4)} = €${cost.toFixed(2)}`)
+      }
+      exportDailyPdfLike(`phyto_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Fitosanitarios', date: formData.date, lines })
+    } catch {}
+  }
+
   const calculateTotalCost = useCallback(() => {
     const { total } = calculatePhytosanitaryTotals(formData, availablePhytosanitaries)
     return total
@@ -593,7 +612,35 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
                                         <Plus className="h-4 w-4" />
                                         <span>Añadir Fitosanitario</span>
                                     </button>
-                                </div>
+                                    </div>
+                                    <div className="hidden md:flex items-center gap-2 ml-2 text-xs">
+                                      {inventoryLastSyncAt && (
+                                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                          Inventario sincronizado {new Date(inventoryLastSyncAt).toLocaleTimeString()}
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          try {
+                                            const ids = Array.from(new Set(formData.phytosanitaries.map(p => p.productId).filter(Boolean))) as string[]
+                                            if (ids.length === 0) return
+                                            const mapRes = await inventoryAPI.getByProducts(ids)
+                                            const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = mapRes?.items || {}
+                                            setStockByProduct(prev => {
+                                              const next = { ...prev }
+                                              for (const id of ids) {
+                                                const it = itemsMap[id]
+                                                next[id] = { stock: Number(it?.currentStock) || 0, unit: it?.unit || prev[id]?.unit || 'L' }
+                                              }
+                                              return next
+                                            })
+                                            setInventoryLastSyncAt(Date.now())
+                                          } catch {}
+                                        }}
+                                        className={`${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-2 py-1 rounded`}
+                                      >Revalidar inventario</button>
+                                    </div>
 							</div>
 
                             {formData.phytosanitaries.length === 0 ? (
@@ -653,9 +700,14 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 															min="0"
                                                         value={phytosanitary.phytosanitaryAmount}
                     onChange={(e) => {
-                                                          const value = parseFloat(e.target.value) || 0
-                                                          updatePhytosanitary(index, 'phytosanitaryAmount', value)
-                      // validación inmediata usando cache local
+                      const v = validatePositiveNumberField(e.target.value, Number(phytosanitary.phytosanitaryAmount || 0))
+                      if (v.error) {
+                        setErrors(prev => ({ ...prev, [`phytosanitaryAmount_${index}`]: v.error as string }))
+                        return
+                      }
+                      setErrors(prev => { const n: any = { ...prev }; delete n[`phytosanitaryAmount_${index}`]; return n })
+                      const value = Number(v.value)
+                      updatePhytosanitary(index, 'phytosanitaryAmount', value)
                       const cached = stockByProduct[phytosanitary.productId || '']
                       if (phytosanitary.productId && cached && value > (cached.stock || 0)) {
                         const path = `/inventario?productId=${phytosanitary.productId}`
@@ -664,7 +716,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
                           onAction: () => navigate(path),
                         })
                       }
-                                                        }}
+                    }}
 															onFocus={handleNumberFocus}
                     onKeyDown={preventInvalidNumberKeys}
 															className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
@@ -676,10 +728,11 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
                                                     <select
                                                         value={phytosanitary.unit || 'L'}
                                                         onChange={(e) => {
-                                                            const u = e.target.value
-                                                            const allowed = ['L','ml','kg','g']
-                                                            if (!allowed.includes(u)) return
-                                                            updatePhytosanitary(index, 'unit', u)
+                                                          const u = e.target.value
+                                                          const ok = validateUnitForType(u, ['L','ml','kg','g'])
+                                                          if (!ok.ok) { setErrors(prev => ({ ...prev, [`phytosanitaryUnit_${index}`]: ok.message || 'Unidad inválida' })); return }
+                                                          setErrors(prev => { const n: any = { ...prev }; delete n[`phytosanitaryUnit_${index}`]; return n })
+                                                          updatePhytosanitary(index, 'unit', u)
                                                         }}
 															className={`px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
@@ -692,6 +745,8 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 															<option value="kg">kg</option>
 															<option value="g">g</option>
 														</select>
+                                                    {errors[`phytosanitaryAmount_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`phytosanitaryAmount_${index}`]}</p>)}
+                                                    {errors[`phytosanitaryUnit_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`phytosanitaryUnit_${index}`]}</p>)}
 													</div>
 												</div>
 											</div>
@@ -763,6 +818,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 
                         <div className="flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-inherit pb-6">
                             <button type="button" onClick={() => { try { onExportCsv() } catch {} }} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar CSV</button>
+                            <button type="button" onClick={() => { try { onExportPdf() } catch {} }} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar PDF</button>
 							<button
 								type="button"
                                 onClick={attemptClose}

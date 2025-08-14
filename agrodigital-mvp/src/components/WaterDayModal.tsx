@@ -7,7 +7,9 @@ import { useAutosaveDraft } from '../hooks/useAutosaveDraft'
 import { getWithCache } from '../utils/cache'
 import { formatCurrencyEUR } from '../utils/format'
 import { convertAmount } from '../utils/units'
+import { validatePositiveNumberField, validateUnitForType } from '../utils/validation'
 import type { DailyWaterRecord } from '../types'
+import { exportDailyPdfLike } from '../utils/pdf'
 
 interface WaterDayModalProps {
 	isOpen: boolean
@@ -191,6 +193,15 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
         } catch {}
     }
 
+    const exportPdf = () => {
+        try {
+            const qtyInProductUnit = convertAmount(Number(formData.consumption || 0), formData.unit as any, waterUnit as any)
+            const cost = qtyInProductUnit * Number(waterPricePerUnit || 0)
+            const lines = [`Agua: ${qtyInProductUnit} ${waterUnit} x €${Number(waterPricePerUnit || 0).toFixed(4)} = €${cost.toFixed(2)}`]
+            exportDailyPdfLike(`water_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Agua', date: formData.date, lines })
+        } catch {}
+    }
+
 	const handleNumberFocus = (e: React.FocusEvent<HTMLInputElement>) => {
 		if (e.target.value === '0') {
 			e.target.value = ''
@@ -236,13 +247,25 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 							<label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 								Consumo de Agua
 							</label>
-							<div className="flex space-x-2">
-                                <input type="number" step="0.01" min="0" value={formData.consumption} onChange={(e) => handleInputChange('consumption', parseFloat(e.target.value) || 0)} onFocus={handleNumberFocus} onKeyDown={(e) => { if (['e','E','+','-'].includes(e.key)) e.preventDefault() }} className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} placeholder="0" />
-								<select value={formData.unit} onChange={(e) => handleInputChange('unit', e.target.value)} className={`px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                            <div className="flex space-x-2">
+                                <input type="number" step="0.01" min="0" value={formData.consumption} onChange={(e) => {
+                                    const v = validatePositiveNumberField(e.target.value, Number(formData.consumption || 0))
+                                    if (v.error) { setErrors(prev => ({ ...prev, consumption: v.error as string })); return }
+                                    setErrors(prev => { const n: any = { ...prev }; delete n.consumption; return n })
+                                    handleInputChange('consumption', Number(v.value))
+                                }} onFocus={handleNumberFocus} onKeyDown={(e) => { if (['e','E','+','-'].includes(e.key)) e.preventDefault() }} className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} placeholder="0" />
+                                <select value={formData.unit} onChange={(e) => {
+                                    const u = e.target.value
+                                    const ok = validateUnitForType(u, ['m3','L'])
+                                    if (!ok.ok) { setErrors(prev => ({ ...prev, unit: ok.message || 'Unidad inválida' })); return }
+                                    setErrors(prev => { const n: any = { ...prev }; delete n.unit; return n })
+                                    handleInputChange('unit', u)
+                                }} className={`px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
                                     <option value="m3">m³</option>
                                     <option value="L">L</option>
-								</select>
-							</div>
+                                </select>
+                            </div>
+                            {errors.consumption && (<p className="text-red-500 text-sm mt-1">{errors.consumption}</p>)}
 							{errors.consumption && (<p className="text-red-500 text-sm mt-1">{errors.consumption}</p>)}
 						</div>
 
@@ -261,8 +284,9 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 							<textarea value={formData.notes} onChange={(e) => handleInputChange('notes', e.target.value)} rows={3} className={`w-full px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} placeholder="Observaciones sobre el consumo de agua del día..." />
 						</div>
 
-						<div className="flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-inherit pb-6">
+                        <div className="flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-inherit pb-6">
                             <button type="button" onClick={exportCsv} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar CSV</button>
+                            <button type="button" onClick={exportPdf} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-3 py-2 rounded-lg text-sm`}>Exportar PDF</button>
 							<button type="button" onClick={attemptClose} className={`px-4 py-2 border rounded-lg transition-colors ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>Cancelar (Esc)</button>
 							<button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">{isSubmitting ? 'Guardando...' : (existingDay ? 'Actualizar Día' : 'Añadir Día')}</button>
 						</div>

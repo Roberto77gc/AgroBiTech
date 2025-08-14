@@ -25,6 +25,7 @@ const ProductSelect: React.FC<Props> = ({ isDarkMode, indexKey, value, options, 
 	const [inputText, setInputText] = useState<string>(filterText || '')
 	const [page, setPage] = useState<number>(0)
 	const selectRef = React.useRef<HTMLSelectElement | null>(null)
+	const typeaheadRef = React.useRef<{ text: string; timer?: number }>({ text: '' })
 
 	useEffect(() => { setInputText(filterText || ''); setPage(0) }, [filterText])
 
@@ -45,6 +46,10 @@ const ProductSelect: React.FC<Props> = ({ isDarkMode, indexKey, value, options, 
 				if (e.key === 'ArrowDown' && selectRef.current) { e.preventDefault(); selectRef.current.focus() }
 				if (e.key === 'Enter') {
 					if (pageItems.length === 1) { onChange(pageItems[0]._id) }
+					else if (pageItems.length > 1) { onChange(pageItems[0]._id) }
+				}
+				if (e.key === 'Escape') {
+					(e.target as HTMLInputElement).blur()
 				}
 			}} onChange={e => { setInputText(e.target.value); setPage(0) }} placeholder="Buscar producto..." className={`w-full mb-2 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
 			{(recentIds || []).length > 0 && (
@@ -69,6 +74,21 @@ const ProductSelect: React.FC<Props> = ({ isDarkMode, indexKey, value, options, 
 					e.preventDefault()
 					const next = Math.max((el.selectedIndex || 0) - 1, 0)
 					el.selectedIndex = next
+					return
+				}
+				if (e.key === 'Home') { e.preventDefault(); el.selectedIndex = 0; return }
+				if (e.key === 'End') { e.preventDefault(); el.selectedIndex = el.options.length - 1; return }
+				if (e.key === 'PageDown') { e.preventDefault(); setPage(p => Math.min(totalPages - 1, p + 1)); return }
+				if (e.key === 'PageUp') { e.preventDefault(); setPage(p => Math.max(0, p - 1)); return }
+				// Typeahead incremental: acumula letras y busca la primera coincidencia visible
+				if (e.key.length === 1 && /[\w\sáéíóúüñÁÉÍÓÚÜÑ]/.test(e.key)) {
+					const state = typeaheadRef.current
+					window.clearTimeout(state.timer)
+					state.text = (state.text + e.key).toLowerCase()
+					state.timer = window.setTimeout(() => { state.text = '' }, 750) as unknown as number
+					const opts = Array.from(el.options)
+					const idx = opts.findIndex(o => (o.text || '').toLowerCase().includes(state.text))
+					if (idx >= 0) { el.selectedIndex = idx }
 					return
 				}
 				if (e.key === 'Enter') {
