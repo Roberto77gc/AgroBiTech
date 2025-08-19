@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
 import type { DailyFertigationRecord, FertilizerRecord, ProductPrice, OtherExpenseRecord } from '../types'
 import { productAPI, inventoryAPI, purchaseAPI, templateAPI } from '../services/api'
-import { getWithCache } from '../utils/cache'
+import { productCache } from '../utils/cache'
 import { useKpis } from '../hooks/useKpis'
 import { useExportCsv } from '../hooks/useExportCsv'
 import { useRecentProducts } from '../hooks/useRecentProducts'
 import { useAutosaveDraft } from '../hooks/useAutosaveDraft'
+import { useOfflineMode } from '../hooks/useOfflineMode'
 import ProductSelect from './common/ProductSelect'
 import TemplatesMenu from './common/TemplatesMenu'
 import StockBadge from './common/StockBadge'
@@ -109,6 +110,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
     const { success: toastSuccess, error: toastError, show: toastShow } = useToast()
     const navigate = useNavigate()
+    const offlineMode = useOfflineMode()
 
     // Memo: mapas y listas derivadas para rendimiento
 	const productById = useMemo(() => {
@@ -221,7 +223,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     const loadData = async () => {
         try {
             setIsLoadingTemplates(true)
-            const cached = await getWithCache<any[]>(`cache:products:${activityName}`, async () => {
+            const products = await productCache.get(`products:${activityName}`, async () => {
                 const [fertilizersResponse, waterResponse] = await Promise.all([
                     productAPI.getByType('fertilizer'),
                     productAPI.getByType('water')
@@ -229,11 +231,8 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                 const fertilizers = fertilizersResponse?.products || fertilizersResponse || []
                 const waterProducts = waterResponse?.products || waterResponse || []
                 return [...fertilizers, ...waterProducts]
-            }, (fresh) => setAvailableFertilizers(Array.isArray(fresh) ? fresh : []))
-            if (cached) setAvailableFertilizers(Array.isArray(cached) ? cached : [])
-            if (!cached) {
-                // si no había cache, ya lo puso el onUpdate
-            }
+            })
+            setAvailableFertilizers(Array.isArray(products) ? products : [])
         } catch (error) {
             console.error('❌ Error loading products:', error)
             setAvailableFertilizers([])
@@ -494,7 +493,28 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					const cost = Number(e.expenseAmount) * Number(e.price || 0)
 					lines.push(`Otro: ${e.expenseType} - ${e.expenseAmount} ${e.unit || 'unidad'} x €${Number(e.price || 0).toFixed(4)} = €${cost.toFixed(2)}`)
 				}
-				exportDailyPdfLike(`fertigation_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Fertirriego', date: formData.date, lines })
+				exportDailyPdfLike(formData.date, activityName, { 
+					fertilizers: formData.fertilizers.map(f => ({
+						fertilizerType: f.fertilizerType,
+						fertilizerAmount: f.fertilizerAmount || 0,
+						fertilizerUnit: f.unit,
+						cost: (f.fertilizerAmount || 0) * f.price
+					})),
+					water: {
+						consumption: formData.waterConsumption,
+						unit: formData.waterUnit,
+						cost: formData.waterConsumption * (waterPrice || 0)
+					},
+					otherExpenses: otherExpenses.map(e => ({
+						description: e.expenseType,
+						amount: e.expenseAmount,
+						cost: e.expenseAmount * (e.price || 0)
+					})),
+					totalCost: formData.totalCost,
+					notes: formData.notes,
+					area: kpiAreaHa,
+					plants: kpiPlants
+				})
 			} catch {}
 		}
 

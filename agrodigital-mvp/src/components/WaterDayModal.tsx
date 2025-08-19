@@ -4,7 +4,7 @@ import { productAPI } from '../services/api'
 import { useExportCsv } from '../hooks/useExportCsv'
 import { useLastDay } from '../hooks/useLastDay'
 import { useAutosaveDraft } from '../hooks/useAutosaveDraft'
-import { getWithCache } from '../utils/cache'
+import { productCache } from '../utils/cache'
 import { formatCurrencyEUR } from '../utils/format'
 import { convertAmount } from '../utils/units'
 import { validatePositiveNumberField, validateUnitForType } from '../utils/validation'
@@ -78,16 +78,15 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 
     const loadWaterPrice = async () => {
         try {
-            const cached = await getWithCache<any[]>(`cache:water:${activityName}`, async () => {
+            const products = await productCache.get(`water:${activityName}`, async () => {
                 const response = await productAPI.getByType('water')
                 return response?.products || response || []
-            }, (fresh) => {
-                const p = Array.isArray(fresh) && fresh.length > 0 ? fresh[0] : null
-                setWaterPricePerUnit(p?.pricePerUnit || 0)
-                setWaterUnit(p?.unit || 'm3')
             })
-            const p = Array.isArray(cached) && cached.length > 0 ? cached[0] : null
-            if (p) { setWaterPricePerUnit(p.pricePerUnit || 0); setWaterUnit(p.unit || 'm3') }
+            const p = Array.isArray(products) && products.length > 0 ? products[0] : null
+            if (p) { 
+                setWaterPricePerUnit(p.pricePerUnit || 0)
+                setWaterUnit(p.unit || 'm3') 
+            }
         } catch (e) {
             setWaterPricePerUnit(0)
             setWaterUnit('m3')
@@ -198,7 +197,15 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
             const qtyInProductUnit = convertAmount(Number(formData.consumption || 0), formData.unit as any, waterUnit as any)
             const cost = qtyInProductUnit * Number(waterPricePerUnit || 0)
             const lines = [`Agua: ${qtyInProductUnit} ${waterUnit} x €${Number(waterPricePerUnit || 0).toFixed(4)} = €${cost.toFixed(2)}`]
-            exportDailyPdfLike(`water_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Agua', date: formData.date, lines })
+            				exportDailyPdfLike(formData.date, activityName, {
+					water: {
+						consumption: formData.consumption,
+						unit: formData.unit,
+						cost: formData.cost
+					},
+					totalCost: formData.cost,
+					notes: formData.notes
+				})
         } catch {}
     }
 

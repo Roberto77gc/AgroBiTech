@@ -1,0 +1,171 @@
+{
+	"name": "AgroDigital - Gestión Agrícola Inteligente",
+	"short_name": "AgroDigital",
+	"description": "Plataforma digital revolucionaria para pequeños y medianos agricultores españoles",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#22c55e",
+	"orientation": "portrait-primary",
+	"scope": "/",
+	"lang": "es-ES",
+	"categories": ["business", "productivity", "agriculture"],
+	"icons": [
+		{
+			"src": "/icons/icon-72x72.png",
+			"sizes": "72x72",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-96x96.png",
+			"sizes": "96x96",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-128x128.png",
+			"sizes": "128x128",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-144x144.png",
+			"sizes": "144x144",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-152x152.png",
+			"sizes": "152x152",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-192x192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-384x384.png",
+			"sizes": "384x384",
+			"type": "image/png",
+			"purpose": "maskable any"
+		},
+		{
+			"src": "/icons/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable any"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/screenshots/dashboard-mobile.png",
+			"sizes": "390x844",
+			"type": "image/png",
+			"form_factor": "narrow",
+			"label": "Dashboard principal en móvil"
+		},
+		{
+			"src": "/screenshots/dashboard-tablet.png",
+			"sizes": "1024x768",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "Dashboard principal en tablet"
+		},
+		{
+			"src": "/screenshots/analytics.png",
+			"sizes": "1024x768",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "Panel de análisis y KPIs"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Nueva Actividad",
+			"short_name": "Actividad",
+			"description": "Crear una nueva actividad agrícola",
+			"url": "/activity/new",
+			"icons": [
+				{
+					"src": "/icons/shortcut-activity.png",
+					"sizes": "96x96"
+				}
+			]
+		},
+		{
+			"name": "Inventario",
+			"short_name": "Inventario",
+			"description": "Gestionar inventario de productos",
+			"url": "/inventory",
+			"icons": [
+				{
+					"src": "/icons/shortcut-inventory.png",
+					"sizes": "96x96"
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"short_name": "Analytics",
+			"description": "Ver análisis y métricas",
+			"url": "/analytics",
+			"icons": [
+				{
+					"src": "/icons/shortcut-analytics.png",
+					"sizes": "96x96"
+				}
+			]
+		}
+	],
+	"related_applications": [],
+	"prefer_related_applications": false,
+	"edge_side_panel": {
+		"preferred_width": 400
+	},
+	"launch_handler": {
+		"client_mode": "navigate-existing"
+	},
+	"handle_links": "preferred",
+	"protocol_handlers": [
+		{
+			"protocol": "web+agrodigital",
+			"url": "/?action=%s"
+		}
+	],
+	"file_handlers": [
+		{
+			"action": "/import",
+			"accept": {
+				"text/csv": [".csv"],
+				"application/json": [".json"]
+			}
+		}
+	],
+	"share_target": {
+		"action": "/share",
+		"method": "POST",
+		"enctype": "multipart/form-data",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url"
+		}
+	},
+	"permissions": [
+		"notifications",
+		"geolocation",
+		"camera",
+		"microphone"
+	],
+	"features": [
+		"Cross Platform",
+		"Offline Support",
+		"Push Notifications",
+		"Touch Optimized",
+		"Responsive Design"
+	]
+}

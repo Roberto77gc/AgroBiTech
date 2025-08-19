@@ -8,12 +8,24 @@ import {
 	Package,
 	Sun,
 	Moon,
-	LogOut
+	LogOut,
+	Menu,
+	X,
+	Smartphone,
+	Tablet,
+	Monitor
 } from 'lucide-react'
 import { useToast } from './ui/ToastProvider'
 import { formatCurrencyEUR } from '../utils/format'
 import { activityAPI, dashboardAPI } from '../services/api'
 import type { Activity as ActivityType } from '../types'
+import CacheStatus from './common/CacheStatus'
+import AnalyticsPanel from './common/AnalyticsPanel'
+import ExtendedKPIs from './common/ExtendedKPIs'
+import NotificationSystem from './ui/NotificationSystem'
+import { useSmartNotifications } from '../hooks/useSmartNotifications'
+import OfflineStatus from './ui/OfflineStatus'
+import { useOfflineMode } from '../hooks/useOfflineMode'
 
 // Lazy loading para modales pesados
 const ActivityFormModal = lazy(() => import('./ActivityFormModal.tsx'))
@@ -61,14 +73,38 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 	const [showSupplierModal, setShowSupplierModal] = useState(false)
 	const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 	const [showSupplierStatsModal, setShowSupplierStatsModal] = useState(false)
-  const [confirmDeleteActivityId, setConfirmDeleteActivityId] = useState<string | null>(null)
+  	const [confirmDeleteActivityId, setConfirmDeleteActivityId] = useState<string | null>(null)
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
+	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+	const [currentBreakpoint, setCurrentBreakpoint] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+
+	// Initialize smart notifications
+	useSmartNotifications()
+	const offlineMode = useOfflineMode()
 
 	useEffect(() => {
 		loadDashboardData()
     const onChanged = () => loadDashboardData()
     window.addEventListener('app:data-changed', onChanged as EventListener)
     return () => window.removeEventListener('app:data-changed', onChanged as EventListener)
+	}, [])
+
+	// Responsive breakpoint detection
+	useEffect(() => {
+		const handleResize = () => {
+			const width = window.innerWidth
+			if (width < 768) {
+				setCurrentBreakpoint('mobile')
+			} else if (width < 1024) {
+				setCurrentBreakpoint('tablet')
+			} else {
+				setCurrentBreakpoint('desktop')
+			}
+		}
+
+		handleResize()
+		window.addEventListener('resize', handleResize)
+		return () => window.removeEventListener('resize', handleResize)
 	}, [])
 
 	// Abrir Inventario automáticamente si la URL contiene ?productId=... o ruta /inventario
@@ -262,24 +298,52 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 	return (
 		<div className={`min-h-screen transition-colors ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
 			{/* Header */}
-			<header className={`border-b transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+			<header className={`sticky top-0 z-40 border-b transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="flex justify-between items-center h-16">
-						<div className="flex items-center space-x-4">
+					<div className="flex items-center justify-between h-16">
+						{/* Logo and Mobile Menu Button */}
+						<div className="flex items-center">
+							{/* Mobile Menu Button */}
+							<button
+								onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+								className="lg:hidden p-2 rounded-lg transition-colors mr-3"
+							>
+								{isMobileMenuOpen ? (
+									<X className="h-6 w-6" />
+								) : (
+									<Menu className="h-6 w-6" />
+								)}
+							</button>
+							
 							<h1 className="text-xl font-bold text-green-600">AgroDigital</h1>
-							<div className="hidden sm:flex items-center space-x-4">
-								<button
-									onClick={() => setIsDarkMode(!isDarkMode)}
-									className={`p-2 rounded-lg transition-colors ${
-										isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-									}`}
-								>
-									{isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-								</button>
+							
+							{/* Breakpoint Indicator (debug) */}
+							<div className="ml-3 flex items-center gap-1 text-xs opacity-60">
+								{currentBreakpoint === 'mobile' && <Smartphone className="h-3 w-3" />}
+								{currentBreakpoint === 'tablet' && <Tablet className="h-3 w-3" />}
+								{currentBreakpoint === 'desktop' && <Monitor className="h-3 w-3" />}
 							</div>
 						</div>
-						
-						<div className="flex items-center space-x-4">
+
+						{/* Header Actions */}
+						<div className="flex items-center space-x-2 sm:space-x-4">
+							{/* Notifications */}
+							<NotificationSystem />
+							
+							{/* Offline Status */}
+							<OfflineStatus className="mr-2" />
+							
+							{/* Dark Mode Toggle */}
+							<button
+								onClick={() => setIsDarkMode(!isDarkMode)}
+								className={`p-2 rounded-lg transition-colors ${
+									isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+								}`}
+							>
+								{isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+							</button>
+							
+							{/* User Info and Logout */}
 							<div className="hidden sm:block">
 								<p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
 									Bienvenido, {user?.name || user?.email || 'Usuario'}
@@ -297,10 +361,93 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 				</div>
 			</header>
 
+			{/* Mobile Menu Overlay */}
+			{isMobileMenuOpen && (
+				<div className="lg:hidden fixed inset-0 z-50">
+					{/* Backdrop */}
+					<div 
+						className="absolute inset-0 bg-black bg-opacity-50"
+						onClick={() => setIsMobileMenuOpen(false)}
+					/>
+					
+					{/* Menu Panel */}
+					<div className={`absolute left-0 top-0 h-full w-80 max-w-[85vw] transform transition-transform ${
+						isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+					} ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+						<div className="p-6">
+							<div className="flex items-center justify-between mb-6">
+								<h2 className="text-lg font-semibold">Menú</h2>
+								<button
+									onClick={() => setIsMobileMenuOpen(false)}
+									className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+								>
+									<X className="h-5 w-5" />
+								</button>
+							</div>
+							
+							{/* Navigation Links */}
+							<div className="space-y-4">
+								<div>
+									<h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+										GESTIÓN
+									</h3>
+									<div className="space-y-2">
+										<button
+											onClick={() => {
+												setShowActivityModal(true)
+												setIsMobileMenuOpen(false)
+											}}
+											className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+										>
+											Nueva Actividad
+										</button>
+										<button
+											onClick={() => {
+												setShowInventoryModal(true)
+												setIsMobileMenuOpen(false)
+											}}
+											className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+										>
+											Inventario
+										</button>
+									</div>
+								</div>
+								
+								<div>
+									<h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+										ACCIONES RÁPIDAS
+									</h3>
+									<div className="space-y-2">
+										<button
+											onClick={() => {
+												setShowProductModal(true)
+												setIsMobileMenuOpen(false)
+											}}
+											className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+										>
+											Productos
+										</button>
+										<button
+											onClick={() => {
+												setShowSupplierModal(true)
+												setIsMobileMenuOpen(false)
+											}}
+											className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+										>
+											Proveedores
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				{/* Sidebar */}
+				{/* Sidebar - Hidden on mobile, shown on larger screens */}
 				<div className="flex flex-col lg:flex-row gap-8">
-					<div className="lg:w-64 flex-shrink-0">
+					<div className="hidden lg:block lg:w-64 flex-shrink-0">
 						<div className={`rounded-xl shadow-lg border transition-colors ${
 							isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
 						}`}>
@@ -400,7 +547,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
                             )}
 
                             {stats && !isLoadingDashboard && (
-								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+								<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
 									<div className={`p-4 sm:p-6 rounded-xl shadow-lg border transition-colors ${
 										isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
 									}`}>
@@ -467,6 +614,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 								</div>
 							)}
 
+							{/* Cache Status */}
+							<div className="mb-6">
+								<CacheStatus className="justify-center" />
+							</div>
+
+										{/* Analytics and Extended KPIs - Responsive Grid */}
+			<div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-6">
+				<AnalyticsPanel activities={activities} />
+				<ExtendedKPIs activities={activities} />
+			</div>
+
 							{/* Activities Section */}
 							<div className={`rounded-xl shadow-lg border overflow-hidden transition-colors ${
 								isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
@@ -490,9 +648,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 								</div>
 
 								<div className="p-6">
-									{/* Search and Filter */}
-                                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
-										<div className="flex-1">
+									{/* Search and Filter - Enhanced Responsive */}
+                                    <div className="space-y-4 mb-6">
+										{/* Search Bar - Full width on mobile */}
+										<div className="w-full">
 											<input
 												type="text"
 												placeholder="Buscar actividades..."
@@ -505,36 +664,40 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 												}`}
 											/>
 										</div>
-                                        <div className="sm:w-48">
-											<select
-												value={selectedCropType}
-												onChange={(e) => setSelectedCropType(e.target.value)}
-												className={`w-full px-4 py-2 border rounded-lg transition-colors ${
-													isDarkMode 
-														? 'bg-gray-700 border-gray-600 text-white' 
-														: 'bg-white border-gray-300 text-gray-900'
-												}`}
-											>
-												<option value="all">Todos los cultivos</option>
-												{Array.from(new Set(activities.map(a => a.cropType))).map(cropType => (
-													<option key={cropType} value={cropType}>{cropType}</option>
-												))}
-											</select>
+										
+										{/* Filters Row - Stack on mobile, row on larger screens */}
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+											<div className="w-full">
+												<select
+													value={selectedCropType}
+													onChange={(e) => setSelectedCropType(e.target.value)}
+													className={`w-full px-4 py-2 border rounded-lg transition-colors ${
+														isDarkMode 
+															? 'bg-gray-700 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+													}`}
+												>
+													<option value="all">Todos los cultivos</option>
+													{Array.from(new Set(activities.map(a => a.cropType))).map(cropType => (
+														<option key={cropType} value={cropType}>{cropType}</option>
+													))}
+												</select>
+											</div>
+											<div className="w-full">
+												<select
+													value={sortKey}
+													onChange={(e) => setSortKey(e.target.value as 'date' | 'cost')}
+													className={`w-full px-4 py-2 border rounded-lg transition-colors ${
+														isDarkMode 
+															? 'bg-gray-700 border-gray-600 text-white' 
+															: 'bg-white border-gray-300 text-gray-900'
+														}`}
+													>
+													<option value="date">Ordenar por fecha</option>
+													<option value="cost">Ordenar por coste</option>
+												</select>
+											</div>
 										</div>
-                                        <div className="sm:w-56">
-                                            <select
-                                                value={sortKey}
-                                                onChange={(e) => setSortKey(e.target.value as 'date' | 'cost')}
-                                                className={`w-full px-4 py-2 border rounded-lg transition-colors ${
-                                                    isDarkMode 
-                                                        ? 'bg-gray-700 border-gray-600 text-white' 
-                                                        : 'bg-white border-gray-300 text-gray-900'
-                                                }`}
-                                            >
-                                                <option value="date">Ordenar por fecha</option>
-                                                <option value="cost">Ordenar por coste</option>
-                                            </select>
-                                        </div>
 									</div>
 
 									{/* Activities List */}

@@ -3,7 +3,7 @@ import { X, Plus, Trash2 } from 'lucide-react'
 import type { ProductPrice, DailyPhytosanitaryRecord as DailyPhytoTypesRecord, PhytosanitaryRecord as GlobalPhytosanitaryRecord } from '../types'
 // import { convertAmount } from '../utils/units'
 import { productAPI, templateAPI, inventoryAPI } from '../services/api'
-import { getWithCache } from '../utils/cache'
+import { productCache } from '../utils/cache'
 import { useExportCsv } from '../hooks/useExportCsv'
 import { useRecentProducts } from '../hooks/useRecentProducts'
 import { useLastDay } from '../hooks/useLastDay'
@@ -158,11 +158,11 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 
   const loadData = async () => {
         try {
-            const cached = await getWithCache<ProductPrice[]>(`cache:phytosanitary:${activityName}`, async () => {
+            const products = await productCache.get(`phytosanitary:${activityName}`, async () => {
                 const res = await productAPI.getByType('phytosanitary')
                 return res?.products || res || []
-            }, (fresh) => setAvailablePhytosanitaries(Array.isArray(fresh) ? fresh : []))
-            if (cached) setAvailablePhytosanitaries(Array.isArray(cached) ? cached : [])
+            })
+            setAvailablePhytosanitaries(Array.isArray(products) ? products : [])
         } catch (error) {
             console.error('Error loading phytosanitaries:', error)
             setAvailablePhytosanitaries([])
@@ -439,7 +439,16 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
         const cost = qty * unitPrice
         lines.push(`Fitosanitario: ${p.phytosanitaryType || (product?.name || '')} - ${qty} ${unit} x €${unitPrice.toFixed(4)} = €${cost.toFixed(2)}`)
       }
-      exportDailyPdfLike(`phyto_${activityName}_${formData.date}.pdf`, { title: 'Parte Diario Fitosanitarios', date: formData.date, lines })
+      				exportDailyPdfLike(formData.date, activityName, {
+					phytosanitary: formData.phytosanitaries.map(p => ({
+						phytosanitaryType: p.phytosanitaryType,
+						phytosanitaryAmount: p.phytosanitaryAmount || 0,
+						phytosanitaryUnit: p.unit || 'kg',
+						cost: (p.phytosanitaryAmount || 0) * (p.price || 0)
+					})),
+					totalCost: formData.totalCost,
+					notes: formData.notes
+				})
     } catch {}
   }
 

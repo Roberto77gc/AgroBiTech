@@ -102,7 +102,10 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 			for (const p of (costs?.phytosanitaries || [])) lines.push(`Fitosanitario: ${p.name} - ${p.amount} ${p.unit} x ${formatCurrency(p.price)} = ${formatCurrency(p.cost)}`)
 			if (costs?.water) lines.push(`Agua: ${costs.water.consumption} ${costs.water.unit} x ${formatCurrency(costs.water.price)} = ${formatCurrency(costs.water.cost)}`)
 			for (const o of (costs?.others || [])) lines.push(`Otro: ${o.name} - ${o.amount} ${o.unit} x ${formatCurrency(o.price)} = ${formatCurrency(o.cost)}`)
-			exportDailyPdfLike(`parte_${activityName}_${date}.pdf`, { title: 'Parte Diario', date, lines })
+			exportDailyPdfLike(date, activityName, {
+			totalCost: totalCost,
+			notes: notes
+		})
 		} catch {}
 	}
 
