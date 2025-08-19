@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Cursor
+Exec=/home/ubuntu/Applications/cursor/cursor.AppImage --no-sandbox
+Icon=/home/ubuntu/Applications/cursor/cursor-icon.png
+Type=Application
+Categories=Development;Utility;
+Terminal=false
