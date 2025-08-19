@@ -1,0 +1,17 @@
+{
+	"launchOptions": {
+		"args": ["--no-sandbox", "--disable-setuid-sandbox"]
+	},
+	"stylesheet": [
+		"https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css"
+	],
+	"pdfOptions": {
+		"format": "A4",
+		"margin": {
+			"top": "20mm",
+			"right": "15mm",
+			"bottom": "20mm",
+			"left": "15mm"
+		}
+	}
+}
