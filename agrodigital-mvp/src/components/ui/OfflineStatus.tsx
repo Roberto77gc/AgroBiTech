@@ -3,7 +3,6 @@ import {
 	Wifi, 
 	WifiOff, 
 	Cloud, 
-	CloudOff, 
 	RefreshCw, 
 	Database, 
 	AlertTriangle,
@@ -32,16 +31,14 @@ const OfflineStatus: React.FC<OfflineStatusProps> = ({
 		hasPendingSync,
 		syncProgress,
 		storageStats,
-		attemptSync,
 		forceSync,
 		clearAllData,
 		clearExpiredCache,
 		removeSyncedData,
-		checkNetworkQuality,
+		// checkNetworkQuality removed as it's not being used
 		lastSyncAttempt,
 		isSyncInProgress,
-		canSync,
-		needsSync
+		canSync
 	} = useOfflineMode()
 
 	const formatBytes = (bytes: number): string => {
@@ -79,15 +76,7 @@ const OfflineStatus: React.FC<OfflineStatusProps> = ({
 		return <CheckCircle className="h-4 w-4" />
 	}
 
-	const getNetworkQualityColor = async () => {
-		const quality = await checkNetworkQuality()
-		switch (quality) {
-			case 'excellent': return 'text-green-500'
-			case 'good': return 'text-yellow-500'
-			case 'poor': return 'text-red-500'
-			default: return 'text-gray-500'
-		}
-	}
+	// Network quality check removed as it's not being used
 
 	const handleSync = async () => {
 		if (canSync) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Bell, X, AlertTriangle, Info, CheckCircle, Clock } from 'lucide-react'
+import { Bell, X, AlertTriangle, Info, CheckCircle } from 'lucide-react'
 
 export interface Notification {
 	id: string
@@ -48,24 +48,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ className = '' 
 		}
 	}, [notifications])
 
-	// Add new notification
-	const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-		const newNotification: Notification = {
-			...notification,
-			id: `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-			timestamp: Date.now(),
-			read: false
-		}
-		
-		setNotifications(prev => [newNotification, ...prev.slice(0, 49)]) // Keep max 50 notifications
-		
-		// Auto-dismiss success notifications after 5 seconds
-		if (notification.type === 'success') {
-			setTimeout(() => {
-				dismissNotification(newNotification.id)
-			}, 5000)
-		}
-	}, [])
+	// addNotification function removed as it's not being used
 
 	// Mark notification as read
 	const markAsRead = useCallback((id: string) => {

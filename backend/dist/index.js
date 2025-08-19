@@ -71,9 +71,6 @@ app.use('/api/products', products_1.default);
 app.use('/api/suppliers', suppliers_1.default);
 app.use('/api/purchases', purchases_1.default);
 app.use('/api/templates', templates_1.default);
-app.use('/', auth_1.default);
-app.use('/activities', dashboard_1.default);
-app.use('/api/actividades', dashboard_1.default);
 const clientDistPath = path_1.default.resolve(__dirname, '../../agrodigital-mvp/dist');
 if (fs_1.default.existsSync(clientDistPath)) {
     app.use(express_1.default.static(clientDistPath));

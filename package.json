@@ -8,7 +8,8 @@
     "build": "npm run build:client && npm run build:server",
     "start": "npm --prefix backend run start",
     "start:all": "npm run build && npm run start",
-    "dev": "npm --prefix agrodigital-mvp run build -- --watch & npm --prefix backend run dev"
+    "dev": "npm --prefix agrodigital-mvp run build -- --watch & npm --prefix backend run dev",
+    "docs:pdf": "npx -y md-to-pdf docs/ProjectOverview.md --config-file docs/md2pdf-config.json || echo 'Instala md-to-pdf si no está disponible'"
   }
 }
 

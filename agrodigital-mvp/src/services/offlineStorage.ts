@@ -56,9 +56,9 @@ class OfflineStorageService {
 					cacheStore.createIndex('expiry', 'expiry', { unique: false })
 				}
 
-				if (!db.objectStoreNames.contains('userData')) {
-					const userStore = db.createObjectStore('userData', { keyPath: 'key' })
-				}
+						if (!db.objectStoreNames.contains('userData')) {
+			db.createObjectStore('userData', { keyPath: 'key' })
+		}
 
 				console.log('IndexedDB schema upgraded')
 			}
@@ -133,7 +133,7 @@ class OfflineStorageService {
 			const transaction = this.db!.transaction(['offlineData'], 'readonly')
 			const store = transaction.objectStore('offlineData')
 			const index = store.index('synced')
-			const request = index.getAll(false)
+			const request = index.getAll()
 
 			request.onsuccess = () => {
 				resolve(request.result || [])
@@ -196,7 +196,7 @@ class OfflineStorageService {
 			const transaction = this.db!.transaction(['offlineData'], 'readwrite')
 			const store = transaction.objectStore('offlineData')
 			const index = store.index('synced')
-			const request = index.getAllKeys(true) // Get all synced items
+			const request = index.getAllKeys() // Get all synced items
 
 			request.onsuccess = () => {
 				const keys = request.result || []

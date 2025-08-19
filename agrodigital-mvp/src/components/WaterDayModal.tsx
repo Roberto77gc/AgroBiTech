@@ -194,9 +194,7 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 
     const exportPdf = () => {
         try {
-            const qtyInProductUnit = convertAmount(Number(formData.consumption || 0), formData.unit as any, waterUnit as any)
-            const cost = qtyInProductUnit * Number(waterPricePerUnit || 0)
-            const lines = [`Agua: ${qtyInProductUnit} ${waterUnit} x €${Number(waterPricePerUnit || 0).toFixed(4)} = €${cost.toFixed(2)}`]
+            // qtyInProductUnit variable removed as it's not being used
             				exportDailyPdfLike(formData.date, activityName, {
 					water: {
 						consumption: formData.consumption,

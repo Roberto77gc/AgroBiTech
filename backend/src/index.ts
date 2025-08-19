@@ -86,10 +86,10 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/templates', templateRoutes);
 
-// Legacy routes for compatibility
-app.use('/', authRoutes);
-app.use('/activities', dashboardRoutes);
-app.use('/api/actividades', dashboardRoutes);
+// Legacy routes for compatibility - REMOVED TO AVOID CONFLICTS
+// app.use('/', authRoutes);
+// app.use('/activities', dashboardRoutes);
+// app.use('/api/actividades', dashboardRoutes);
 
 // Serve frontend static files (SPA) from Vite build
 const clientDistPath = path.resolve(__dirname, '../../agrodigital-mvp/dist');

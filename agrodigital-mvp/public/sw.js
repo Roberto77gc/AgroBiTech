@@ -273,9 +273,10 @@ async function syncData() {
 			console.log('Service Worker: Syncing offline data:', offlineData.length, 'items')
 			
 			// Enviar datos al servidor
+			const API_BASE = 'http://localhost:3000/api'
 			for (const data of offlineData) {
 				try {
-					await fetch('/api/sync', {
+					await fetch(`${API_BASE}/sync`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json'
@@ -334,7 +335,7 @@ async function syncProductsData() {
 }
 
 // Función para marcar datos como sincronizados (placeholder)
-async function markDataAsSynced(id: string) {
+async function markDataAsSynced(id) {
 	// Aquí implementarías la lógica para marcar datos como sincronizados
 	console.log('Service Worker: Marking data as synced:', id)
 }

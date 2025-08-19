@@ -104,7 +104,7 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 			for (const o of (costs?.others || [])) lines.push(`Otro: ${o.name} - ${o.amount} ${o.unit} x ${formatCurrency(o.price)} = ${formatCurrency(o.cost)}`)
 			exportDailyPdfLike(date, activityName, {
 			totalCost: totalCost,
-			notes: notes
+			notes: '' // No hay notas en este contexto
 		})
 		} catch {}
 	}

@@ -78,7 +78,7 @@ const AdaptiveDashboard: React.FC<AdaptiveDashboardProps> = ({
 			case 'carousel':
 				return (
 					<div className={`flex overflow-x-auto snap-x snap-mandatory ${gridConfig.padding} gap-4 pb-4`}>
-						{React.Children.map(children, (child, index) => (
+						{React.Children.map(children, (child) => (
 							<div className="flex-shrink-0 snap-start w-80">
 								{child}
 							</div>

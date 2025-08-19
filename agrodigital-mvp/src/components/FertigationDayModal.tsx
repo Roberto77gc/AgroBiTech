@@ -7,7 +7,7 @@ import { useKpis } from '../hooks/useKpis'
 import { useExportCsv } from '../hooks/useExportCsv'
 import { useRecentProducts } from '../hooks/useRecentProducts'
 import { useAutosaveDraft } from '../hooks/useAutosaveDraft'
-import { useOfflineMode } from '../hooks/useOfflineMode'
+// useOfflineMode import removed as it's not being used
 import ProductSelect from './common/ProductSelect'
 import TemplatesMenu from './common/TemplatesMenu'
 import StockBadge from './common/StockBadge'
@@ -110,7 +110,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
     const { success: toastSuccess, error: toastError, show: toastShow } = useToast()
     const navigate = useNavigate()
-    const offlineMode = useOfflineMode()
+    	// offlineMode hook removed as it's not being used
 
     // Memo: mapas y listas derivadas para rendimiento
 	const productById = useMemo(() => {
@@ -493,17 +493,21 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					const cost = Number(e.expenseAmount) * Number(e.price || 0)
 					lines.push(`Otro: ${e.expenseType} - ${e.expenseAmount} ${e.unit || 'unidad'} x €${Number(e.price || 0).toFixed(4)} = €${cost.toFixed(2)}`)
 				}
+				// Get water price for export
+				const waterProduct = availableFertilizers.find(p => p.type === 'water')
+				const waterPrice = Number(waterProduct?.pricePerUnit || 0)
+				
 				exportDailyPdfLike(formData.date, activityName, { 
 					fertilizers: formData.fertilizers.map(f => ({
 						fertilizerType: f.fertilizerType,
 						fertilizerAmount: f.fertilizerAmount || 0,
-						fertilizerUnit: f.unit,
-						cost: (f.fertilizerAmount || 0) * f.price
+						fertilizerUnit: f.unit || '',
+						cost: (f.fertilizerAmount || 0) * (f.price || 0)
 					})),
 					water: {
 						consumption: formData.waterConsumption,
 						unit: formData.waterUnit,
-						cost: formData.waterConsumption * (waterPrice || 0)
+						cost: formData.waterConsumption * waterPrice
 					},
 					otherExpenses: otherExpenses.map(e => ({
 						description: e.expenseType,

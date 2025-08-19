@@ -25,7 +25,7 @@ import ExtendedKPIs from './common/ExtendedKPIs'
 import NotificationSystem from './ui/NotificationSystem'
 import { useSmartNotifications } from '../hooks/useSmartNotifications'
 import OfflineStatus from './ui/OfflineStatus'
-import { useOfflineMode } from '../hooks/useOfflineMode'
+// useOfflineMode import removed as it's not being used
 
 // Lazy loading para modales pesados
 const ActivityFormModal = lazy(() => import('./ActivityFormModal.tsx'))
@@ -80,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, logout }) => {
 
 	// Initialize smart notifications
 	useSmartNotifications()
-	const offlineMode = useOfflineMode()
+	// offlineMode hook removed as it's not being used
 
 	useEffect(() => {
 		loadDashboardData()

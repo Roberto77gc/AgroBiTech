@@ -1,5 +1,5 @@
 // Prefer environment variable in production; fallback to same-origin '/api'
-const API_BASE_URL = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api'
+export const API_BASE_URL = 'http://localhost:3000/api' // Alinear con prefijo /api del backend
 const IS_DEV = (import.meta as any)?.env?.DEV ?? false
 
 const redirectToLogin = () => {

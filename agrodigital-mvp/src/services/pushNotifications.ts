@@ -112,7 +112,7 @@ class PushNotificationService {
 				badge: data.badge || '/favicon.ico',
 				tag: data.tag,
 				data: data.data,
-				actions: data.actions,
+				// actions property removed as it's not supported in NotificationOptions
 				requireInteraction: true, // Keep notification visible until user interacts
 				silent: false
 			})
@@ -130,21 +130,7 @@ class PushNotificationService {
 				notification.close()
 			}
 
-			// Handle notification action clicks
-			if (data.actions) {
-				notification.onactionclick = (event) => {
-					event.preventDefault()
-					
-					window.dispatchEvent(new CustomEvent('agrodigital:notification-action', {
-						detail: { 
-							action: event.action,
-							notification: data 
-						}
-					}))
-					
-					notification.close()
-				}
-			}
+			// Handle notification action clicks removed as onactionclick is not supported
 
 			// Auto-close after 10 seconds
 			setTimeout(() => {

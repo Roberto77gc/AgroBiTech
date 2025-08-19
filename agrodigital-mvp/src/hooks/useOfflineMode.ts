@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { API_BASE_URL } from '../services/api'
 import { offlineStorage, type OfflineData } from '../services/offlineStorage'
 
 interface OfflineModeState {
@@ -190,7 +191,10 @@ export const useOfflineMode = () => {
 				setState(prev => ({ ...prev, syncProgress: 0 }))
 			}, 2000)
 
-			return result
+			return {
+				...result,
+				total: result.success + result.failed
+			}
 
 		} catch (error) {
 			console.error('Sync failed:', error)
@@ -351,7 +355,7 @@ export const useOfflineMode = () => {
 
 		try {
 			const startTime = performance.now()
-			const response = await fetch('/api/health', { 
+			await fetch(`${API_BASE_URL}/health`, { 
 				method: 'HEAD',
 				cache: 'no-cache'
 			})
