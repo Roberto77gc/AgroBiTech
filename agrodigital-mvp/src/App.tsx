@@ -1,11 +1,10 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
-import { authAPI } from './components/../services/api'
 import { Sprout, Users, BarChart3, Shield, ArrowRight, CheckCircle, Leaf } from 'lucide-react'
 import ToastProvider from './components/ui/ToastProvider'
 import AuthForm from './components/AuthForm'
 
-// Lazy loading para componentes pesados
-const Dashboard = lazy(() => import('./components/Dashboard'))
+// Lazy loading para rutas
+const AppRoutes = lazy(() => import('./routes'))
 
 // Componente de carga para lazy loading
 const LoadingSpinner = () => (
@@ -23,49 +22,76 @@ interface User {
 
 function App() {
 	const [isAuthenticated, setIsAuthenticated] = useState(false)
-	const [user, setUser] = useState<User | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
+	const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+	const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false)
+	const [showInstallPill, setShowInstallPill] = useState<boolean>(false)
+	const [pillPrefEnabled] = useState<boolean>(() => { try { return localStorage.getItem('pwa:installPill:enabled') !== '0' } catch { return true } })
+
+	useEffect(() => {
+		const dismissed = (() => { try { return localStorage.getItem('pwa:installPill:dismissed') === '1' } catch { return false } })()
+		const onBeforeInstall = (e: any) => {
+			e.preventDefault()
+			setDeferredPrompt(e)
+			// si nunca se mostró, enseñamos banner; si el usuario lo descartó, mostramos pill
+			if (!dismissed) setShowInstallBanner(true)
+			else setShowInstallPill(true)
+		}
+		// permitir re-abrir pill desde otras partes (ajustes/menu)
+		const onShowInstall = () => {
+			if (deferredPrompt) setShowInstallPill(true)
+		}
+		window.addEventListener('app:show-install', onShowInstall as any)
+		window.addEventListener('beforeinstallprompt', onBeforeInstall as any)
+		return () => {
+			window.removeEventListener('beforeinstallprompt', onBeforeInstall as any)
+			window.removeEventListener('app:show-install', onShowInstall as any)
+		}
+	}, [deferredPrompt])
 
   useEffect(() => {
     // Precargar usuario guardado para una UX más ágil
     try {
       const cached = localStorage.getItem('user')
-      if (cached) setUser(JSON.parse(cached))
+      void cached
     } catch {}
     // Validar token con backend cuando exista
     const token = localStorage.getItem('token')
     if (!token) { setIsLoading(false); return }
     (async () => {
       try {
-        const res = await authAPI.validate()
-        if (res?.valid) {
+        const response = await fetch('http://localhost:3000/api/validate', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        const res = await response.json()
+        if (res?.success) {
           setIsAuthenticated(true)
-          setUser(res.user || null)
         } else {
           localStorage.removeItem('token')
           localStorage.removeItem('user')
           setIsAuthenticated(false)
-          setUser(null)
         }
       } catch {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         setIsAuthenticated(false)
-        setUser(null)
       } finally {
         setIsLoading(false)
       }
     })()
   }, [])
 
-	const handleLogin = (userData: User) => {
-		setUser(userData)
+	const handleLogin = (_userData: User) => {
+		// user se gestionará en vistas; evitamos warning de variable no usada
 		setIsAuthenticated(true)
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const handleLogout = () => {
 		localStorage.removeItem('token')
-		setUser(null)
 		setIsAuthenticated(false)
 	}
 
@@ -77,8 +103,47 @@ function App() {
     return (
       <ToastProvider>
         <Suspense fallback={<LoadingSpinner />}>
-          <Dashboard key={user?._id || 'dashboard'} user={user} logout={handleLogout} />
+          <AppRoutes logout={handleLogout} />
         </Suspense>
+        {showInstallBanner && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border rounded-xl shadow-lg p-3 flex items-center gap-3 z-50">
+            <span className="text-sm text-gray-700">Instala AgroDigital como app</span>
+            <button
+              className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  setShowInstallBanner(false)
+                  setShowInstallPill(false)
+                  if (deferredPrompt?.prompt) {
+                    await deferredPrompt.prompt()
+                    await deferredPrompt.userChoice
+                  }
+                } catch {}
+              }}
+            >Instalar</button>
+            <button className="px-2 py-1 text-sm text-gray-600" onClick={() => { setShowInstallBanner(false); setShowInstallPill(true); }}>Ahora no</button>
+          </div>
+        )}
+        {showInstallPill && pillPrefEnabled && (
+          <div className="fixed top-4 right-4 bg-white/90 backdrop-blur border rounded-full shadow p-2 pl-3 flex items-center gap-2 z-50">
+            <span className="text-xs text-gray-700">Instalar app</span>
+            <button
+              className="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  if (deferredPrompt?.prompt) {
+                    await deferredPrompt.prompt()
+                    await deferredPrompt.userChoice
+                  }
+                } catch {}
+              }}
+            >Instalar</button>
+            <button className="p-1 text-gray-500" aria-label="Cerrar"
+              onClick={() => { setShowInstallPill(false); try { localStorage.setItem('pwa:installPill:dismissed','1') } catch {} }}>
+              ×
+            </button>
+          </div>
+        )}
       </ToastProvider>
     )
 	}
@@ -204,6 +269,45 @@ function App() {
 						</div>
 					</div>
 				</footer>
+        {showInstallBanner && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border rounded-xl shadow-lg p-3 flex items-center gap-3 z-50">
+            <span className="text-sm text-gray-700">Instala AgroDigital como app</span>
+            <button
+              className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  setShowInstallBanner(false)
+                  setShowInstallPill(false)
+                  if (deferredPrompt?.prompt) {
+                    await deferredPrompt.prompt()
+                    await deferredPrompt.userChoice
+                  }
+                } catch {}
+              }}
+            >Instalar</button>
+            <button className="px-2 py-1 text-sm text-gray-600" onClick={() => { setShowInstallBanner(false); setShowInstallPill(true); }}>Ahora no</button>
+          </div>
+        )}
+        {showInstallPill && pillPrefEnabled && (
+          <div className="fixed top-4 right-4 bg-white/90 backdrop-blur border rounded-full shadow p-2 pl-3 flex items-center gap-2 z-50">
+            <span className="text-xs text-gray-700">Instalar app</span>
+            <button
+              className="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  if (deferredPrompt?.prompt) {
+                    await deferredPrompt.prompt()
+                    await deferredPrompt.userChoice
+                  }
+                } catch {}
+              }}
+            >Instalar</button>
+            <button className="p-1 text-gray-500" aria-label="Cerrar"
+              onClick={() => { setShowInstallPill(false); try { localStorage.setItem('pwa:installPill:dismissed','1') } catch {} }}>
+              ×
+            </button>
+          </div>
+        )}
       </div>
 
     </ToastProvider>

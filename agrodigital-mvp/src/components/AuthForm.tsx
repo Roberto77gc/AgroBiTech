@@ -59,15 +59,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
                 ? await authAPI.login(payload as { email: string; password: string })
                 : await authAPI.register(payload as { name: string; email: string; password: string })
 
-            if (data?.token) {
+            if (data?.success && data?.token) {
 				// Guardar token
 				localStorage.setItem('token', data.token)
 				
 				// Configurar datos del usuario
 				const userData = data.user || {
-					_id: data._id || '1',
+					_id: data.user?._id || '1',
 					email: formData.email,
-					name: data.name || formData.name || 'Usuario'
+					name: data.user?.name || formData.name || 'Usuario'
 				}
                 try { localStorage.setItem('user', JSON.stringify(userData)) } catch {}
 

@@ -1,6 +1,25 @@
-// Prefer environment variable in production; fallback to same-origin '/api'
-export const API_BASE_URL = 'http://localhost:3000/api' // Alinear con prefijo /api del backend
+// Prefer environment variable; fallback to same-origin '/api'
 const IS_DEV = (import.meta as any)?.env?.DEV ?? false
+export const API_BASE_URL = (() => {
+  // Prioridad 1: variable de entorno explícita
+  const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL
+  if (envUrl) return envUrl
+  // Prioridad 2: modo desarrollo → usar backend local por defecto
+  if (IS_DEV) return 'http://localhost:3000/api'
+  // Prioridad 2.1: si estamos en localhost/127.0.0.1 por cualquier motivo
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:3000/api'
+    }
+  }
+  // Prioridad 3: opción inyectada en window (por si se setea en runtime)
+  if (typeof window !== 'undefined' && (window as any).VITE_API_BASE_URL) {
+    return (window as any).VITE_API_BASE_URL
+  }
+  // Fallback producción: mismo origen con prefijo /api
+  return (typeof window !== 'undefined') ? `${window.location.origin}/api` : 'http://localhost:3000/api'
+})()
 
 const redirectToLogin = () => {
     try {
@@ -79,253 +98,409 @@ const authenticatedRequest = async (endpoint: string, options: RequestInit = {})
         }
 		return data
 	} catch (error) {
-		if (IS_DEV) console.error(`❌ API Error for ${endpoint}:`, error)
-		emitApiError({ endpoint, message: (error as Error)?.message || 'Network/Unknown error' })
+		if (IS_DEV) console.error(`❌ API Error:`, error)
 		throw error
 	}
 }
 
-// Productos y Precios
-export const productAPI = {
-	// Obtener todos los productos
-	getAll: () => authenticatedRequest('/products'),
-	
-	// Obtener productos por tipo
-	getByType: (type: string) => authenticatedRequest(`/products/type/${type}`),
-	
-	// Crear producto
-	create: (productData: any) => authenticatedRequest('/products', {
-		method: 'POST',
-		body: JSON.stringify(productData)
-	}),
-	
-	// Actualizar producto
-	update: (id: string, productData: any) => authenticatedRequest(`/products/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify(productData)
-	}),
-	
-	// Eliminar producto
-	delete: (id: string) => authenticatedRequest(`/products/${id}`, {
-		method: 'DELETE'
-	})
-}
+// ===== AUTENTICACIÓN =====
 
-// Proveedores
-export const supplierAPI = {
-	// Obtener todos los proveedores
-	getAll: () => authenticatedRequest('/suppliers'),
-	
-	// Crear proveedor
-	create: (supplierData: any) => authenticatedRequest('/suppliers', {
-		method: 'POST',
-		body: JSON.stringify(supplierData)
-	}),
-	
-	// Actualizar proveedor
-	update: (id: string, supplierData: any) => authenticatedRequest(`/suppliers/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify(supplierData)
-	}),
-	
-	// Eliminar proveedor
-	delete: (id: string) => authenticatedRequest(`/suppliers/${id}`, {
-		method: 'DELETE'
-	})
-}
+export const authAPI = {
+	// Validar token existente
+	validate: async () => {
+		try {
+			const response = await authenticatedRequest('/validate')
+			return response
+		} catch (error) {
+			console.error('Error validando token:', error)
+			return { valid: false }
+		}
+	},
 
-// Compras
-export const purchaseAPI = {
-	// Obtener todas las compras
-	getAll: () => authenticatedRequest('/purchases'),
-	
-	// Crear compra
-	create: (purchaseData: any) => authenticatedRequest('/purchases', {
-		method: 'POST',
-		body: JSON.stringify(purchaseData)
-	}),
-	
-	// Actualizar compra
-	update: (id: string, purchaseData: any) => authenticatedRequest(`/purchases/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify(purchaseData)
-	}),
-	
-	// Eliminar compra
-	delete: (id: string) => authenticatedRequest(`/purchases/${id}`, {
-		method: 'DELETE'
-	}),
-	
-	// Obtener compras por producto
-	getByProduct: (productId: string) => authenticatedRequest(`/purchases/product/${productId}`)
-}
-
-// Inventario
-export const inventoryAPI = {
-	// Obtener todos los items de inventario
-	getAll: () => authenticatedRequest('/inventory'),
-	
-	// Crear item de inventario
-	create: (itemData: any) => authenticatedRequest('/inventory', {
-		method: 'POST',
-		body: JSON.stringify(itemData)
-	}),
-	
-	// Actualizar item de inventario
-	update: (id: string, itemData: any) => authenticatedRequest(`/inventory/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify(itemData)
-	}),
-	
-	// Eliminar item de inventario
-	delete: (id: string) => authenticatedRequest(`/inventory/${id}`, {
-		method: 'DELETE'
-	}),
-	
-	// Obtener item por producto
-	getByProduct: (productId: string) => authenticatedRequest(`/inventory/product/${productId}`),
-  // Obtener varios items por productIds (mapa { productId: { _id, currentStock, unit } })
-  getByProducts: (productIds: string[]) => authenticatedRequest(`/inventory/by-products?ids=${encodeURIComponent(productIds.join(','))}`),
-	
-	// Ajustar stock
-  adjustStock: (id: string, quantity: number, operation: 'add' | 'subtract', unit?: string) => 
-    authenticatedRequest(`/inventory/${id}/adjust`, {
+	// Login
+	login: async (credentials: { email: string; password: string }) => {
+		const response = await fetch(`${API_BASE_URL}/login`, {
 			method: 'POST',
-      body: JSON.stringify({ quantity, operation, unit })
-		}),
-	
-	// Obtener alertas
-	getAlerts: () => authenticatedRequest('/inventory/alerts'),
-	
-	// Marcar alerta como leída
-	markAlertAsRead: (alertId: string) => authenticatedRequest(`/inventory/alerts/${alertId}/read`, {
-		method: 'POST'
-  }),
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(credentials)
+		})
 
-  // Listar movimientos con querystring ya formateado
-  listMovements: (query: string) => authenticatedRequest(`/inventory/movements${query ? `?${query}` : ''}`),
+		if (!response.ok) {
+			const error = await response.json()
+			throw new Error(error.message || 'Error en login')
+		}
+
+		const data = await response.json()
+		if (data.token) {
+			localStorage.setItem('token', data.token)
+			localStorage.setItem('user', JSON.stringify(data.user))
+		}
+		return data
+	},
+
+	// Registro
+	register: async (userData: { email: string; password: string; name: string }) => {
+		const response = await fetch(`${API_BASE_URL}/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(userData)
+		})
+
+		if (!response.ok) {
+			const error = await response.json()
+			throw new Error(error.message || 'Error en registro')
+		}
+
+		const data = await response.json()
+		if (data.token) {
+			localStorage.setItem('token', data.token)
+			localStorage.setItem('user', JSON.stringify(data.user))
+		}
+		return data
+	}
 }
 
-// Actividades y Registros Diarios
+// ===== ACTIVIDADES =====
+
 export const activityAPI = {
-	// Obtener todas las actividades
-	getAll: () => authenticatedRequest('/dashboard/activities'),
-	
-	// Obtener actividad por ID
-	getById: (id: string) => authenticatedRequest(`/dashboard/activities/${id}`),
-	
-	// Crear actividad
-	create: (activityData: any) => authenticatedRequest('/dashboard/activities', {
-		method: 'POST',
-		body: JSON.stringify(activityData)
-	}),
-	
-	// Actualizar actividad
-	update: (id: string, activityData: any) => authenticatedRequest(`/dashboard/activities/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify(activityData)
-	}),
-	
-	// Eliminar actividad
-	delete: (id: string) => authenticatedRequest(`/dashboard/activities/${id}`, {
-		method: 'DELETE'
-	}),
-	
-	// ===== REGISTROS DIARIOS =====
-	
-	// Fertigation Day Management
-	addFertigationDay: (activityId: string, dayData: any) => 
-		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation`, {
+	// Crear nueva actividad
+	create: async (activityData: any) => {
+		return await authenticatedRequest('/activities', {
 			method: 'POST',
-			body: JSON.stringify(dayData)
-		}),
-	
-	updateFertigationDay: (activityId: string, dayIndex: number, dayData: any) => 
-		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
-			method: 'PUT',
-			body: JSON.stringify(dayData)
-		}),
-	
-	deleteFertigationDay: (activityId: string, dayIndex: number) => 
-		authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
-			method: 'DELETE'
-		}),
-	
-	// Phytosanitary Day Management
-	addPhytosanitaryDay: (activityId: string, dayData: any) => 
-		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary`, {
-			method: 'POST',
-			body: JSON.stringify(dayData)
-		}),
-	updatePhytosanitaryDay: (activityId: string, dayIndex: number, dayData: any) =>
-		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
-			method: 'PUT',
-			body: JSON.stringify(dayData)
-		}),
-	deletePhytosanitaryDay: (activityId: string, dayIndex: number) =>
-		authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
-			method: 'DELETE'
-		}),
+			body: JSON.stringify(activityData)
+		})
+	},
 
-	// Water Day Management
-	addWaterDay: (activityId: string, dayData: any) => 
-		authenticatedRequest(`/dashboard/activities/${activityId}/water`, {
-			method: 'POST',
-			body: JSON.stringify(dayData)
-		}),
-	updateWaterDay: (activityId: string, dayIndex: number, dayData: any) =>
-		authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
+	// Obtener todas las actividades
+	getAll: async (params?: { page?: number; limit?: number; cropType?: string; sortBy?: string; sortOrder?: string }) => {
+		const queryParams = new URLSearchParams()
+		if (params?.page) queryParams.append('page', params.page.toString())
+		if (params?.limit) queryParams.append('limit', params.limit.toString())
+		if (params?.cropType && params.cropType !== 'all') queryParams.append('cropType', params.cropType)
+		if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+		if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+
+		const endpoint = `/activities${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+		return await authenticatedRequest(endpoint)
+	},
+
+	// Obtener actividad específica
+	getById: async (id: string) => {
+		return await authenticatedRequest(`/activities/${id}`)
+	},
+
+	// Actualizar actividad
+	update: async (id: string, activityData: any) => {
+		return await authenticatedRequest(`/activities/${id}`, {
 			method: 'PUT',
-			body: JSON.stringify(dayData)
-		}),
-	deleteWaterDay: (activityId: string, dayIndex: number) =>
-		authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
+			body: JSON.stringify(activityData)
+		})
+	},
+
+	// Eliminar actividad
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/activities/${id}`, {
 			method: 'DELETE'
 		})
+	},
+
+	// ===== FUNCIONALIDADES AVANZADAS =====
+	// Fertirriego
+	addFertigationDay: async (activityId: string, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/fertigation`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	updateFertigationDay: async (activityId: string, dayIndex: number, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/fertigation/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	deleteFertigationDay: async (activityId: string, dayIndex: number) => {
+		return await authenticatedRequest(`/activities/${activityId}/fertigation/${dayIndex}`, {
+			method: 'DELETE'
+		})
+	},
+
+	// Fitosanitarios
+	addPhytosanitaryDay: async (activityId: string, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/phytosanitary`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	updatePhytosanitaryDay: async (activityId: string, dayIndex: number, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/phytosanitary/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	deletePhytosanitaryDay: async (activityId: string, dayIndex: number) => {
+		return await authenticatedRequest(`/activities/${activityId}/phytosanitary/${dayIndex}`, {
+			method: 'DELETE'
+		})
+	},
+
+	// Agua
+	addWaterDay: async (activityId: string, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/water`, {
+			method: 'POST',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	updateWaterDay: async (activityId: string, dayIndex: number, dayData: any) => {
+		return await authenticatedRequest(`/activities/${activityId}/water/${dayIndex}`, {
+			method: 'PUT',
+			body: JSON.stringify(dayData)
+		})
+	},
+
+	deleteWaterDay: async (activityId: string, dayIndex: number) => {
+		return await authenticatedRequest(`/activities/${activityId}/water/${dayIndex}`, {
+			method: 'DELETE'
+		})
+	}
 }
 
-// Dashboard
+// ===== DASHBOARD =====
+
 export const dashboardAPI = {
-    stats: () => authenticatedRequest('/dashboard'),
+	// Obtener estadísticas del dashboard
+	getStats: async () => {
+		return await authenticatedRequest('/dashboard')
+	},
+
+	// Obtener actividades recientes para el dashboard
+	getRecentActivities: async (limit: number = 10) => {
+		return await authenticatedRequest(`/dashboard/activities?limit=${limit}`)
+	}
 }
 
-// Auth
-export const authAPI = {
-    validate: () => authenticatedRequest('/auth/validate'),
-    profile: () => authenticatedRequest('/auth/profile'),
-    login: (payload: { email: string; password: string }) => authenticatedRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    }),
-    register: (payload: { name: string; email: string; password: string }) => authenticatedRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    }),
+// ===== INVENTARIO =====
+
+export const inventoryAPI = {
+	// Obtener inventario del usuario
+	getInventory: async () => {
+		return await authenticatedRequest('/inventory')
+	},
+
+	// Obtener item por producto
+	getByProduct: async (productId: string) => {
+		return await authenticatedRequest(`/inventory/product/${productId}`)
+	},
+
+	// Obtener varios items por productIds
+	getByProducts: async (productIds: string[]) => {
+		return await authenticatedRequest(`/inventory/by-products?ids=${encodeURIComponent(productIds.join(','))}`)
+	},
+
+	// Ajustar stock
+	adjustStock: async (id: string, quantity: number, operation: 'add' | 'subtract', unit?: string) => {
+		return await authenticatedRequest(`/inventory/${id}/adjust`, {
+			method: 'POST',
+			body: JSON.stringify({ quantity, operation, unit })
+		})
+	},
+
+	// Obtener alertas
+	getAlerts: async () => {
+		return await authenticatedRequest('/inventory/alerts')
+	},
+
+	// Marcar alerta como leída
+	markAlertAsRead: async (alertId: string) => {
+		return await authenticatedRequest(`/inventory/alerts/${alertId}/read`, {
+			method: 'POST'
+		})
+	},
+
+	// Listar movimientos
+	listMovements: async (query: string) => {
+		return await authenticatedRequest(`/inventory/movements${query ? `?${query}` : ''}`)
+	},
+
+	// Crear item de inventario
+	create: async (itemData: any) => {
+		return await authenticatedRequest('/inventory', {
+			method: 'POST',
+			body: JSON.stringify(itemData)
+		})
+	},
+
+	// Actualizar item de inventario
+	update: async (id: string, itemData: any) => {
+		return await authenticatedRequest(`/inventory/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(itemData)
+		})
+	},
+
+	// Eliminar item de inventario
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/inventory/${id}`, {
+			method: 'DELETE'
+		})
+	},
+
+	// Obtener todos los items de inventario
+	getAll: async () => {
+		return await authenticatedRequest('/inventory')
+	}
 }
 
-// Plantillas
+// ===== UTILIDADES =====
+
+export const apiUtils = {
+	// Verificar si la API está disponible
+	healthCheck: async () => {
+		try {
+			const response = await fetch(`${API_BASE_URL.replace('/api', '')}/api/health`)
+			return response.ok
+		} catch {
+			return false
+		}
+	},
+
+	// Obtener URL base de la API
+	getBaseUrl: () => API_BASE_URL
+}
+
+// ===== APIS DE COMPATIBILIDAD =====
+// Para mantener compatibilidad con componentes existentes
+
+export const productAPI = {
+	// Obtener todos los productos
+	getAll: async () => {
+		return await authenticatedRequest('/products')
+	},
+
+	// Obtener productos por tipo
+	getByType: async (type: string) => {
+		return await authenticatedRequest(`/products/type/${type}`)
+	},
+
+	// Crear producto
+	create: async (productData: any) => {
+		return await authenticatedRequest('/products', {
+			method: 'POST',
+			body: JSON.stringify(productData)
+		})
+	},
+
+	// Actualizar producto
+	update: async (id: string, productData: any) => {
+		return await authenticatedRequest(`/products/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(productData)
+		})
+	},
+
+	// Eliminar producto
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/products/${id}`, {
+			method: 'DELETE'
+		})
+	}
+}
+
+export const supplierAPI = {
+	// Obtener todos los proveedores
+	getAll: async () => {
+		return await authenticatedRequest('/suppliers')
+	},
+
+	// Crear proveedor
+	create: async (supplierData: any) => {
+		return await authenticatedRequest('/suppliers', {
+			method: 'POST',
+			body: JSON.stringify(supplierData)
+		})
+	},
+
+	// Actualizar proveedor
+	update: async (id: string, supplierData: any) => {
+		return await authenticatedRequest(`/suppliers/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(supplierData)
+		})
+	},
+
+	// Eliminar proveedor
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/suppliers/${id}`, {
+			method: 'DELETE'
+		})
+	}
+}
+
+export const purchaseAPI = {
+	// Obtener todas las compras
+	getAll: async () => {
+		return await authenticatedRequest('/purchases')
+	},
+
+	// Crear compra
+	create: async (purchaseData: any) => {
+		return await authenticatedRequest('/purchases', {
+			method: 'POST',
+			body: JSON.stringify(purchaseData)
+		})
+	},
+
+	// Actualizar compra
+	update: async (id: string, purchaseData: any) => {
+		return await authenticatedRequest(`/purchases/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(purchaseData)
+		})
+	},
+
+	// Eliminar compra
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/purchases/${id}`, {
+			method: 'DELETE'
+		})
+	},
+
+	// Obtener compras por producto
+	getByProduct: async (productId: string) => {
+		return await authenticatedRequest(`/purchases/product/${productId}`)
+	}
+}
+
 export const templateAPI = {
-    list: (type?: string) => authenticatedRequest(`/templates${type ? `?type=${type}` : ''}`),
-    create: (data: any) => authenticatedRequest('/templates', {
-        method: 'POST',
-        body: JSON.stringify(data)
-    }),
-    update: (id: string, data: any) => authenticatedRequest(`/templates/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data)
-    }),
-    delete: (id: string) => authenticatedRequest(`/templates/${id}`, {
-        method: 'DELETE'
-    }),
-}
+	// Listar plantillas
+	list: async (type?: string) => {
+		return await authenticatedRequest(`/templates${type ? `?type=${type}` : ''}`)
+	},
 
-export default {
-	productAPI,
-	supplierAPI,
-	purchaseAPI,
-    inventoryAPI,
-    activityAPI,
-    dashboardAPI,
-    authAPI,
-    templateAPI
+	// Crear plantilla
+	create: async (data: any) => {
+		return await authenticatedRequest('/templates', {
+			method: 'POST',
+			body: JSON.stringify(data)
+		})
+	},
+
+	// Actualizar plantilla
+	update: async (id: string, data: any) => {
+		return await authenticatedRequest(`/templates/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(data)
+		})
+	},
+
+	// Eliminar plantilla
+	delete: async (id: string) => {
+		return await authenticatedRequest(`/templates/${id}`, {
+			method: 'DELETE'
+		})
+	}
 } 

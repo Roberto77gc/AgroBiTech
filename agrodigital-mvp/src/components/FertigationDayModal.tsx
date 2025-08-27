@@ -61,6 +61,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	const [availableFertilizers, setAvailableFertilizers] = useState<ProductPrice[]>([])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
+	const [ariaStatus, setAriaStatus] = useState<string>('')
 	const [showCostBreakdown, setShowCostBreakdown] = useState(false)
 	const [costBreakdownData, setCostBreakdownData] = useState<any>(null)
 	const [showOtherExpensesModal, setShowOtherExpensesModal] = useState(false)
@@ -76,6 +77,8 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
     const [inventoryLastSyncAt, setInventoryLastSyncAt] = useState<number | null>(null)
     const dateInputRef = useRef<HTMLInputElement | null>(null)
+    const headingRef = useRef<HTMLHeadingElement | null>(null)
+    const modalRef = useRef<HTMLDivElement | null>(null)
     // Borrador y autosave
     const storageKey = useMemo(() => `fertigation:draft:${activityName || 'default'}`, [activityName])
     const draftReadyRef = useRef(false)
@@ -144,9 +147,12 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                 for (const f of formData.fertilizers) {
                     if (!f.productId || (f.fertilizerAmount || 0) <= 0) continue
                     const it = itemsMap[f.productId]
-                    if (it && f.fertilizerAmount > (it.currentStock || 0)) {
-                        toastError(`Stock insuficiente para ${f.fertilizerType}. Disponible: ${it.currentStock} ${it.unit}`)
-                        break
+                    if (it) {
+                        const enteredInStockUnit = convertAmount(Number(f.fertilizerAmount || 0), (f.unit as any) || 'kg', (it.unit as any) || 'kg')
+                        if (enteredInStockUnit > (it.currentStock || 0)) {
+                            toastError(`Stock insuficiente para ${f.fertilizerType}. Disponible: ${it.currentStock} ${it.unit}`)
+                            break
+                        }
                     }
                 }
             } catch (e) {
@@ -190,6 +196,34 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			}
 		}
 	}, [isOpen, existingDay, storageKey])
+
+	// Foco inicial en el título al abrir
+	useEffect(() => {
+		if (!isOpen) return
+		try { headingRef.current?.focus() } catch {}
+	}, [isOpen])
+
+	// Focus trap básico con Tab dentro del modal
+	useEffect(() => {
+		if (!isOpen) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = modalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) {
+				if (active === first) { e.preventDefault(); last.focus() }
+			} else {
+				if (active === last) { e.preventDefault(); first.focus() }
+			}
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [isOpen])
 
     const calculateTotalCost = useCallback(() => {
         const { total } = calculateFertigationTotals(formData, availableFertilizers, otherExpenses)
@@ -372,7 +406,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			productId: '',
 			fertilizerType: '',
 			fertilizerAmount: 0,
-			fertilizerUnit: 'kg',
+			fertilizerUnit: (() => { try { return localStorage.getItem('defaults:fertilizerUnit') || 'kg' } catch { return 'kg' } })(),
 			price: 0,
 			unit: 'kg',
 			brand: '',
@@ -645,6 +679,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 
             if (Object.keys(newErrors).length > 0) {
 				setErrors(newErrors)
+				setAriaStatus('Hay errores de validación en el formulario')
                 // Scroll al primer error
                 const firstKey = Object.keys(newErrors)[0]
                 const el = document.querySelector('[data-error-anchor="' + firstKey + '"]') as HTMLElement | null
@@ -715,6 +750,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			
 			setCostBreakdownData(breakdownData)
 			setShowCostBreakdown(true)
+			setAriaStatus('Día de fertirriego guardado correctamente')
 			
 			// Persistir último día para "Usar último día"
             try { localStorage.setItem(`fertigation:last:${activityName}`, JSON.stringify({ formData: updatedFormData, otherExpenses })) } catch {}
@@ -725,6 +761,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 			onClose()
 		} catch (error) {
 			console.error('Error submitting fertigation day:', error)
+			setAriaStatus('Error al guardar el día de fertirriego')
 		} finally {
 			setIsSubmitting(false)
 		}
@@ -755,13 +792,13 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 	if (!isOpen) return null
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="fertigation-modal-title" ref={modalRef}>
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-					<h2 className="text-xl font-bold">
+					<h2 id="fertigation-modal-title" ref={headingRef} tabIndex={-1} className="text-xl font-bold">
 						{existingDay ? 'Editar Día de Fertirriego' : 'Añadir Día de Fertirriego'}
 					</h2>
 					<div className="flex items-center gap-2">
@@ -819,15 +856,18 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					</div>
 				</div>
 
+				{/* Screen reader announcements for aggregated errors and status */}
+				<div className="sr-only" aria-live="polite">{[...Object.values(errors || {}).filter(Boolean), ariaStatus].filter(Boolean).join('. ')}</div>
+
 				{/* Content */}
-				<div className="p-6">
+				<div className="p-6" ref={modalRef}>
 					<div className="mb-4">
 						<p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
 							Actividad: <span className="font-medium">{activityName}</span>
 						</p>
 					</div>
 
-                    <form id="fertigation-form" onSubmit={handleSubmit} className="space-y-6">
+                    <form id="fertigation-form" onSubmit={handleSubmit} className="space-y-6" aria-describedby="fertigation-modal-title" aria-busy={isSubmitting}>
 						{/* Fecha */}
                         <div data-error-anchor="date">
 							<label className={`block text-sm font-medium mb-2 ${
@@ -863,27 +903,32 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 								<div className="relative">
                                     <button
 										type="button"
+										aria-haspopup="menu"
+										aria-expanded={showTemplates ? true : false}
+										aria-controls="fertigation-templates-menu"
 										onClick={() => setShowTemplates(v => !v)}
 										className={`${isDarkMode ? 'bg-green-700 text-white hover:bg-green-600' : 'bg-green-100 text-green-800 hover:bg-green-200'} px-3 py-1 rounded-lg text-sm`}
 									>
 										Usar Plantilla
 									</button>
                                     {showTemplates && (
-                                        <TemplatesMenu
-                                            isDarkMode={isDarkMode}
-                                            isLoading={isLoadingTemplates}
-                                            savedTemplates={savedTemplates as any}
-                                            onApplyLastDay={applyLastDay}
-                                            onApplyQuick={() => applyTemplate('water')}
-                                            onUseSaved={(tpl: any) => applySavedTemplate(tpl)}
-                                            onUpdateSaved={(tpl: any) => updateTemplatePayload(tpl)}
-                                            onRenameStart={(tpl: any) => startRenameTemplate(tpl)}
-                                            onDelete={async (tpl: any) => { try { await templateAPI.delete(tpl._id); await loadSavedTemplates(); toastSuccess('Plantilla borrada') } catch { toastError('No se pudo borrar la plantilla') } }}
-                                            newTemplateName={newTemplateName}
-                                            onNewTemplateNameChange={setNewTemplateName}
-                                            onSaveCurrentAsTemplate={saveCurrentAsTemplate}
-                                        />
-                                    )}
+										<div id="fertigation-templates-menu">
+										<TemplatesMenu
+ 											isDarkMode={isDarkMode}
+ 											isLoading={isLoadingTemplates}
+ 											savedTemplates={savedTemplates as any}
+ 											onApplyLastDay={applyLastDay}
+ 											onApplyQuick={() => applyTemplate('water')}
+ 											onUseSaved={(tpl: any) => applySavedTemplate(tpl)}
+ 											onUpdateSaved={(tpl: any) => updateTemplatePayload(tpl)}
+ 											onRenameStart={(tpl: any) => startRenameTemplate(tpl)}
+ 											onDelete={async (tpl: any) => { try { await templateAPI.delete(tpl._id); await loadSavedTemplates(); toastSuccess('Plantilla borrada') } catch { toastError('No se pudo borrar la plantilla') } }}
+ 											newTemplateName={newTemplateName}
+ 											onNewTemplateNameChange={setNewTemplateName}
+ 											onSaveCurrentAsTemplate={saveCurrentAsTemplate}
+										/>
+										</div>
+ 									)}
 								</div>
 								<button
 									type="button"
@@ -1009,6 +1054,8 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 																	? 'bg-gray-700 border-gray-600 text-white' 
 																	: 'bg-white border-gray-300 text-gray-900'
 															}`}
+															aria-invalid={Boolean(errors[`fertilizerAmount_${index}`])}
+															aria-describedby={errors[`fertilizerAmount_${index}`] ? `fertilizerAmount_${index}_error` : undefined}
 														/>
 														<select
 															value={fertilizer.unit || 'kg'}
@@ -1030,7 +1077,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 															<option value="L">L</option>
 															<option value="ml">ml</option>
 														</select>
-													{errors[`fertilizerAmount_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`fertilizerAmount_${index}`]}</p>)}
+													{errors[`fertilizerAmount_${index}`] && (<p id={`fertilizerAmount_${index}_error`} className="text-red-500 text-sm mt-1">{errors[`fertilizerAmount_${index}`]}</p>)}
 													{errors[`fertilizerUnit_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`fertilizerUnit_${index}`]}</p>)}
                                 </div>
                                 <div className="hidden md:flex items-center gap-2 ml-2 text-xs">

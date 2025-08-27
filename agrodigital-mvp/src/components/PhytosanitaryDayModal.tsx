@@ -54,6 +54,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
   const [availablePhytosanitaries, setAvailablePhytosanitaries] = useState<ProductPrice[]>([])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
+	const [ariaStatus, setAriaStatus] = useState<string>('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [savedTemplates, setSavedTemplates] = useState<any[]>([])
   const [newTemplateName, setNewTemplateName] = useState('')
@@ -68,6 +69,8 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
   const [inventoryLastSyncAt, setInventoryLastSyncAt] = useState<number | null>(null)
   const storageKey = useMemo(() => `phyto:draft:${activityName || 'default'}`, [activityName])
   const draftReadyRef = useRef(false)
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+  const modalRef = useRef<HTMLDivElement | null>(null)
   const preventInvalidNumberKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (['e', 'E', '+', '-'].includes(e.key)) {
       e.preventDefault()
@@ -181,7 +184,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 			productId: '',
 			phytosanitaryType: '',
 			phytosanitaryAmount: 0,
-			phytosanitaryUnit: 'L',
+			phytosanitaryUnit: (() => { try { return localStorage.getItem('defaults:phytosanitaryUnit') || 'L' } catch { return 'L' } })(),
 			price: 0,
 			unit: 'L',
 			brand: '',
@@ -377,6 +380,34 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, attemptClose])
 
+	// Foco inicial en el título al abrir
+	useEffect(() => {
+		if (!isOpen) return
+		try { headingRef.current?.focus() } catch {}
+	}, [isOpen])
+
+	// Focus trap básico
+	useEffect(() => {
+		if (!isOpen) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = modalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) {
+				if (active === first) { e.preventDefault(); last.focus() }
+			} else {
+				if (active === last) { e.preventDefault(); first.focus() }
+			}
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [isOpen])
+
   const { recentProductIds, pushRecent } = useRecentProducts('phyto:recentProducts', 5)
   const { load: loadLast, save: saveLast } = useLastDay<any>(activityName, 'phytosanitary')
 
@@ -480,6 +511,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 
       if (Object.keys(newErrors).length > 0) {
 				setErrors(newErrors)
+				setAriaStatus('Hay errores de validación en el formulario')
         // Scroll al primer error
         const firstKey = Object.keys(newErrors)[0]
         const el = document.querySelector('[data-error-anchor="' + firstKey + '"]') as HTMLElement | null
@@ -520,8 +552,10 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
       // Llamar a la función onSubmit que ahora conectará con el backend
 			await onSubmit(updatedFormData)
 			onClose()
+			setAriaStatus('Día de fitosanitarios guardado correctamente')
 		} catch (error) {
 			console.error('Error submitting phytosanitary day:', error)
+			setAriaStatus('Error al guardar el día de fitosanitarios')
 		} finally {
 			setIsSubmitting(false)
 		}
@@ -536,20 +570,23 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
   if (!isOpen) return (<></>)
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="phyto-modal-title" ref={modalRef}>
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-					<h2 className="text-xl font-bold">
+					<h2 id="phyto-modal-title" ref={headingRef} tabIndex={-1} className="text-xl font-bold">
 						{existingDay ? 'Editar Día de Fitosanitarios' : 'Añadir Día de Fitosanitarios'}
 					</h2>
-					<button onClick={onClose} className={`p-2 rounded-lg transition-colors ${
+					<button onClick={onClose} aria-label="Cerrar" className={`p-2 rounded-lg transition-colors ${
 						isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
 					}`}>
 						<X className="h-5 w-5" />
 					</button>
 				</div>
+
+				{/* Screen reader announcements for aggregated errors and status */}
+				<div className="sr-only" aria-live="polite">{[...Object.values(errors || {}).filter(Boolean), ariaStatus].filter(Boolean).join('. ')}</div>
 
 				<div className="p-6">
 					<div className="mb-4">
@@ -558,7 +595,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 						</p>
 					</div>
 
-					<form onSubmit={handleSubmit} className="space-y-6">
+					<form onSubmit={handleSubmit} className="space-y-6" aria-describedby="phyto-modal-title" aria-busy={isSubmitting}>
 						<div>
 							<label className={`block text-sm font-medium mb-2 ${
 								isDarkMode ? 'text-gray-300' : 'text-gray-700'
@@ -591,26 +628,31 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
                                     <div className="relative">
                                         <button
                                             type="button"
+                                            aria-haspopup="menu"
+                                            aria-expanded={showTemplates ? true : false}
+                                            aria-controls="phyto-templates-menu"
                                             onClick={() => setShowTemplates(v => !v)}
                                             className={`${isDarkMode ? 'bg-orange-700 text-white hover:bg-orange-600' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'} px-3 py-1 rounded-lg text-sm`}
                                         >
                                             Usar Plantilla
                                         </button>
                                         {showTemplates && (
-                                            <TemplatesMenu
-                                                isDarkMode={isDarkMode}
-                                                isLoading={isLoadingTemplates}
-                                                savedTemplates={savedTemplates as any}
-                                                onApplyLastDay={applyLastDay}
-                                                onApplyQuick={() => applyTemplate()}
-                                                onUseSaved={(tpl: any) => applySavedTemplate(tpl)}
-                                                onUpdateSaved={(tpl: any) => updateTemplatePayload(tpl)}
-                                                onRenameStart={(tpl: any) => startRenameTemplate(tpl)}
-                                                onDelete={async (tpl: any) => { try { await templateAPI.delete(tpl._id); await loadSavedTemplates(); toastSuccess('Plantilla borrada') } catch { toastError('No se pudo borrar la plantilla') } }}
-                                                newTemplateName={newTemplateName}
-                                                onNewTemplateNameChange={setNewTemplateName}
-                                                onSaveCurrentAsTemplate={saveCurrentAsTemplate}
-                                            />
+											<div id="phyto-templates-menu">
+											<TemplatesMenu
+												isDarkMode={isDarkMode}
+												isLoading={isLoadingTemplates}
+												savedTemplates={savedTemplates as any}
+												onApplyLastDay={applyLastDay}
+												onApplyQuick={() => applyTemplate()}
+												onUseSaved={(tpl: any) => applySavedTemplate(tpl)}
+												onUpdateSaved={(tpl: any) => updateTemplatePayload(tpl)}
+												onRenameStart={(tpl: any) => startRenameTemplate(tpl)}
+												onDelete={async (tpl: any) => { try { await templateAPI.delete(tpl._id); await loadSavedTemplates(); toastSuccess('Plantilla borrada') } catch { toastError('No se pudo borrar la plantilla') } }}
+												newTemplateName={newTemplateName}
+												onNewTemplateNameChange={setNewTemplateName}
+												onSaveCurrentAsTemplate={saveCurrentAsTemplate}
+											/>
+											</div>
                                         )}
                                     </div>
                                     <button
@@ -707,32 +749,34 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 															type="number"
 															step="0.01"
 															min="0"
-                                                        value={phytosanitary.phytosanitaryAmount}
-                    onChange={(e) => {
-                      const v = validatePositiveNumberField(e.target.value, Number(phytosanitary.phytosanitaryAmount || 0))
-                      if (v.error) {
-                        setErrors(prev => ({ ...prev, [`phytosanitaryAmount_${index}`]: v.error as string }))
-                        return
-                      }
-                      setErrors(prev => { const n: any = { ...prev }; delete n[`phytosanitaryAmount_${index}`]; return n })
-                      const value = Number(v.value)
-                      updatePhytosanitary(index, 'phytosanitaryAmount', value)
-                      const cached = stockByProduct[phytosanitary.productId || '']
-                      if (phytosanitary.productId && cached && value > (cached.stock || 0)) {
-                        const path = `/inventario?productId=${phytosanitary.productId}`
-                        toastShow('error', `Stock insuficiente para ${phytosanitary.phytosanitaryType || 'producto'}. Disponible: ${cached.stock} ${cached.unit || 'u'}`, {
-                          actionLabel: 'Abrir inventario',
-                          onAction: () => navigate(path),
-                        })
-                      }
-                    }}
+															value={phytosanitary.phytosanitaryAmount}
+															onChange={(e) => {
+																const v = validatePositiveNumberField(e.target.value, Number(phytosanitary.phytosanitaryAmount || 0))
+																if (v.error) {
+																	setErrors(prev => ({ ...prev, [`phytosanitaryAmount_${index}`]: v.error as string }))
+																	return
+																}
+																setErrors(prev => { const n: any = { ...prev }; delete n[`phytosanitaryAmount_${index}`]; return n })
+																const value = Number(v.value)
+																updatePhytosanitary(index, 'phytosanitaryAmount', value)
+																const cached = stockByProduct[phytosanitary.productId || '']
+																if (phytosanitary.productId && cached && value > (cached.stock || 0)) {
+																	const path = `/inventario?productId=${phytosanitary.productId}`
+																	toastShow('error', `Stock insuficiente para ${phytosanitary.phytosanitaryType || 'producto'}. Disponible: ${cached.stock} ${cached.unit || 'u'}`, {
+																		actionLabel: 'Abrir inventario',
+																		onAction: () => navigate(path),
+																	})
+																}
+															}}
 															onFocus={handleNumberFocus}
-                    onKeyDown={preventInvalidNumberKeys}
+															onKeyDown={preventInvalidNumberKeys}
 															className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${
 																isDarkMode 
 																	? 'bg-gray-700 border-gray-600 text-white' 
 																	: 'bg-white border-gray-300 text-gray-900'
 															}`}
+															aria-invalid={Boolean(errors[`phytosanitaryAmount_${index}`])}
+															aria-describedby={errors[`phytosanitaryAmount_${index}`] ? `phytosanitaryAmount_${index}_error` : undefined}
 														/>
                                                     <select
                                                         value={phytosanitary.unit || 'L'}
@@ -754,7 +798,7 @@ const PhytosanitaryDayModal: React.FC<PhytosanitaryDayModalProps> = ({
 															<option value="kg">kg</option>
 															<option value="g">g</option>
 														</select>
-                                                    {errors[`phytosanitaryAmount_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`phytosanitaryAmount_${index}`]}</p>)}
+                                                    {errors[`phytosanitaryAmount_${index}`] && (<p id={`phytosanitaryAmount_${index}_error`} className="text-red-500 text-sm mt-1">{errors[`phytosanitaryAmount_${index}`]}</p>)}
                                                     {errors[`phytosanitaryUnit_${index}`] && (<p className="text-red-500 text-sm mt-1">{errors[`phytosanitaryUnit_${index}`]}</p>)}
 													</div>
 												</div>

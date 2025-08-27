@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { inventoryAPI } from '../services/api'
 import { Package, Filter, X, ExternalLink } from 'lucide-react'
 import { useToast } from './ui/ToastProvider'
@@ -42,21 +42,46 @@ const InventoryMovementsModal: React.FC<InventoryMovementsModalProps> = ({ isOpe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+  const modalRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => { if (isOpen) { try { headingRef.current?.focus() } catch {} } }, [isOpen])
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const container = modalRef.current
+      if (!container) return
+      const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (e.shiftKey) { if (active === first) { e.preventDefault(); last.focus() } }
+      else { if (active === last) { e.preventDefault(); first.focus() } }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="inventory-movements-title" ref={modalRef}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className={`relative w-full max-w-4xl mx-4 rounded-xl shadow-2xl ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
         <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center space-x-2">
             <Package className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold">Movimientos de Inventario</h3>
+            <h3 id="inventory-movements-title" ref={headingRef} tabIndex={-1} className="font-semibold">Movimientos de Inventario</h3>
           </div>
           <button onClick={onClose} className={`p-2 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* SR announcements */}
+        <div className="sr-only" aria-live="polite"></div>
 
         <div className="p-4 space-y-4">
           {/* Filtros */}

@@ -51,13 +51,13 @@ const ProductSelect: React.FC<Props> = ({ isDarkMode, indexKey, value, options, 
 				if (e.key === 'Escape') {
 					(e.target as HTMLInputElement).blur()
 				}
-			}} onChange={e => { setInputText(e.target.value); setPage(0) }} placeholder="Buscar producto..." className={`w-full mb-2 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+			}} onChange={e => { setInputText(e.target.value); setPage(0) }} placeholder="Buscar producto..." className={`w-full mb-2 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} aria-label="Buscar productos" role="searchbox" aria-controls={`product-select-${indexKey}`} />
 			{(recentIds || []).length > 0 && (
 				<div className="mb-2 flex flex-wrap gap-2">
 					{(recentIds.slice(0,3)).map(id => {
 						const prod = options.find(p => p._id === id)
 						if (!prod) return null
-						return <button key={`${indexKey}_${id}`} type="button" onClick={() => onChange(id)} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-2 py-1 rounded text-xs`}>{prod.name}</button>
+						return <button key={`${indexKey}_${id}`} type="button" onClick={() => onChange(id)} className={`${isDarkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} px-2 py-1 rounded text-xs`} aria-label={`Usar reciente ${prod.name}`}>{prod.name}</button>
 					})}
 				</div>
 			)}
@@ -96,10 +96,10 @@ const ProductSelect: React.FC<Props> = ({ isDarkMode, indexKey, value, options, 
 					const opt = el.options[el.selectedIndex]
 					if (opt) onChange(opt.value)
 				}
-			}} onChange={e => onChange(e.target.value)} className={`w-full px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+			}} onChange={e => onChange(e.target.value)} className={`w-full px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} id={`product-select-${indexKey}`} aria-label="Seleccionar producto" aria-expanded={true}>
 				<option value="">{filtered.length === 0 ? 'No hay productos disponibles' : 'Seleccionar producto'}</option>
 				{pageItems.map(product => (
-					<option key={product._id} value={product._id}>
+					<option key={product._id} value={product._id} aria-label={`${product.name} ${(product.pricePerUnit || 0).toLocaleString('es-ES',{style:'currency',currency:'EUR'})}/${product.unit}`}>
 						{/* name highlighted plus price/unit */}
 						{product.name} - {(product.pricePerUnit || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}/{product.unit}
 					</option>

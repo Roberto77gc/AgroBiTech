@@ -45,18 +45,21 @@ const CacheStatus: React.FC<CacheStatusProps> = ({ className = '' }) => {
 
 
 	return (
-		<div className={`flex gap-2 text-xs ${className}`}>
-			<div className={`px-2 py-1 rounded-full flex items-center gap-1 ${getStateColor(inventoryState)}`}>
-				<span className="font-bold">{getStateIcon(inventoryState)}</span>
-				<span>Inventario</span>
+		<div className={`flex flex-col sm:flex-row gap-2 text-xs ${className}`}>
+			<div className={`px-2 sm:px-3 py-1 sm:py-2 rounded-full flex items-center justify-center sm:justify-start gap-1 ${getStateColor(inventoryState)}`}>
+				<span className="font-bold text-sm sm:text-base">{getStateIcon(inventoryState)}</span>
+				<span className="hidden sm:inline">Inventario</span>
+				<span className="sm:hidden">Inv</span>
 			</div>
-			<div className={`px-2 py-1 rounded-full flex items-center gap-1 ${getStateColor(productState)}`}>
-				<span className="font-bold">{getStateIcon(productState)}</span>
-				<span>Productos</span>
+			<div className={`px-2 sm:px-3 py-1 sm:py-2 rounded-full flex items-center justify-center sm:justify-start gap-1 ${getStateColor(productState)}`}>
+				<span className="font-bold text-sm sm:text-base">{getStateIcon(productState)}</span>
+				<span className="hidden sm:inline">Productos</span>
+				<span className="sm:hidden">Prod</span>
 			</div>
-			<div className={`px-2 py-1 rounded-full flex items-center gap-1 ${getStateColor(statsState)}`}>
-				<span className="font-bold">{getStateIcon(statsState)}</span>
-				<span>Estadísticas</span>
+			<div className={`px-2 sm:px-3 py-1 sm:py-2 rounded-full flex items-center justify-center sm:justify-start gap-1 ${getStateColor(statsState)}`}>
+				<span className="font-bold text-sm sm:text-base">{getStateIcon(statsState)}</span>
+				<span className="hidden sm:inline">Estadísticas</span>
+				<span className="sm:hidden">Stats</span>
 			</div>
 		</div>
 	)

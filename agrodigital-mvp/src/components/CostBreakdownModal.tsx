@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { downloadCsv } from '../hooks/useExportCsv'
 import { exportDailyPdfLike } from '../utils/pdf'
 import { X, Euro, Leaf, Shield, Droplets, Package } from 'lucide-react'
@@ -26,6 +26,27 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 	isDarkMode
 }) => {
 	if (!isOpen) return null
+
+	const headingRef = useRef<HTMLHeadingElement | null>(null)
+	const modalRef = useRef<HTMLDivElement | null>(null)
+
+	useEffect(() => { if (isOpen) { try { headingRef.current?.focus() } catch {} } }, [isOpen])
+	useEffect(() => {
+		if (!isOpen) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = modalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) { if (active === first) { e.preventDefault(); last.focus() } } else { if (active === last) { e.preventDefault(); first.focus() } }
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [isOpen])
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat('es-ES', {
@@ -110,14 +131,14 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 	}
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="cost-breakdown-title" ref={modalRef}>
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
 					<div>
-						<h2 className="text-xl font-bold flex items-center space-x-2">
+						<h2 id="cost-breakdown-title" ref={headingRef} tabIndex={-1} className="text-xl font-bold flex items-center space-x-2">
 							<Euro className="h-6 w-6 text-green-600" />
 							<span>Desglose de Gastos</span>
 						</h2>
@@ -138,6 +159,9 @@ const CostBreakdownModal: React.FC<CostBreakdownModalProps> = ({
 						<X className="h-5 w-5" />
 					</button>
 				</div>
+
+				{/* SR announcements */}
+				<div className="sr-only" aria-live="polite"></div>
 
 				{/* Content */}
 				<div className="p-6 space-y-6">

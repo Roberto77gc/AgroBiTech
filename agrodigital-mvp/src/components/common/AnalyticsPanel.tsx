@@ -2,7 +2,16 @@ import React, { useState, useMemo } from 'react'
 import { formatCurrencyEUR } from '../../utils/format'
 
 interface AnalyticsPanelProps {
-	activities: any[]
+	activities: Array<{
+		createdAt?: string | Date
+		totalCost?: number
+		fertigation?: { enabled?: boolean; dailyRecords?: Array<{ totalCost?: number; date?: string }>}
+		phytosanitary?: { enabled?: boolean; dailyRecords?: Array<{ totalCost?: number; date?: string }>}
+		water?: { enabled?: boolean; dailyRecords?: Array<{ cost?: number; date?: string }>}
+		notes?: string
+		name?: string
+		date?: string | Date
+	}>
 	className?: string
 }
 
@@ -31,10 +40,10 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 	const filteredActivities = useMemo(() => {
 		const cutoffDate = new Date()
 		cutoffDate.setDate(cutoffDate.getDate() - selectedRange)
-		
 		return activities.filter(activity => {
-			const activityDate = new Date(activity.date)
-			return activityDate >= cutoffDate
+			const raw = (activity as any).date ?? activity.createdAt
+			const activityDate = new Date(raw as any)
+			return !isNaN(activityDate.getTime()) && activityDate >= cutoffDate
 		})
 	}, [activities, selectedRange])
 
@@ -49,12 +58,24 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 			}
 		}
 
-		// Calculate costs by category
-		const costByCategory: { fertilizers: number; water: number; phytosanitary: number; others: number } = filteredActivities.reduce((acc, activity) => {
-			acc.fertilizers += activity.fertilizersCost || 0
-			acc.water += activity.waterCost || 0
-			acc.phytosanitary += activity.phytosanitaryCost || 0
-			acc.others += activity.otherExpensesCost || 0
+		// Derivar costes por categoría a partir de sub-módulos por actividad
+		const costByCategory: { fertilizers: number; water: number; phytosanitary: number; others: number } = filteredActivities.reduce((acc, activity: any) => {
+			const fertRecords = activity?.fertigation?.dailyRecords || []
+			const fertCost = fertRecords.reduce((s: number, r: any) => s + Number(r?.totalCost || 0), 0)
+			acc.fertilizers += fertCost
+
+			const waterRecords = activity?.water?.dailyRecords || []
+			const waterCost = waterRecords.reduce((s: number, r: any) => s + Number(r?.cost || 0), 0)
+			acc.water += waterCost
+
+			const phytoRecords = activity?.phytosanitary?.dailyRecords || []
+			const phytoCost = phytoRecords.reduce((s: number, r: any) => s + Number(r?.totalCost || 0), 0)
+			acc.phytosanitary += phytoCost
+
+			const total = Number(activity?.totalCost || 0)
+			const derivedSum = fertCost + waterCost + phytoCost
+			const others = Math.max(0, total - derivedSum)
+			acc.others += others
 			return acc
 		}, { fertilizers: 0, water: 0, phytosanitary: 0, others: 0 })
 
@@ -64,10 +85,11 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 		// Calculate cost trend (last 7 data points)
 		const costTrend = filteredActivities
 			.slice(-7)
-			.map(activity => ({
-				date: new Date(activity.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }),
-				cost: (activity.fertilizersCost || 0) + (activity.waterCost || 0) + (activity.phytosanitaryCost || 0) + (activity.otherExpensesCost || 0)
-			}))
+			.map(activity => {
+				const raw = (activity as any).date ?? (activity as any).createdAt
+				const label = new Date(raw as any).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
+				return { date: label, cost: Number((activity as any).totalCost || 0) }
+			})
 
 		// Calculate percentage change from previous period
 		const previousRange = selectedRange * 2
@@ -75,15 +97,14 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 		previousCutoff.setDate(previousCutoff.getDate() - previousRange)
 		
 		const previousActivities = activities.filter(activity => {
-			const activityDate = new Date(activity.date)
+			const raw = (activity as any).date ?? (activity as any).createdAt
+			const activityDate = new Date(raw as any)
 			const cutoffDate = new Date()
 			cutoffDate.setDate(cutoffDate.getDate() - selectedRange)
 			return activityDate >= previousCutoff && activityDate < cutoffDate
 		})
 
-		const previousTotalCost = previousActivities.reduce((sum: number, activity: any) => {
-			return sum + (activity.fertilizersCost || 0) + (activity.waterCost || 0) + (activity.phytosanitaryCost || 0) + (activity.otherExpensesCost || 0)
-		}, 0)
+		const previousTotalCost = previousActivities.reduce((sum: number, activity: any) => sum + Number(activity.totalCost || 0), 0)
 
 		const percentageChange = previousTotalCost > 0 
 			? ((totalCost - previousTotalCost) / previousTotalCost) * 100 
@@ -111,19 +132,22 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 	}
 
 	return (
-		<div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
-			<div className="flex items-center justify-between mb-6">
-				<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+		<div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 ${className}`}>
+			{/* Header */}
+			<div className="mb-6">
+				<h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
 					Analíticas por Rango
 				</h3>
-				<div className="flex gap-2">
+				
+				{/* Time Range Selector - Responsive */}
+				<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
 					{timeRanges.map((range) => (
 						<button
 							key={range.days}
 							onClick={() => setSelectedRange(range.days)}
-							className={`px-3 py-1 text-sm rounded-md transition-colors ${
+							className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
 								selectedRange === range.days
-									? 'bg-blue-600 text-white'
+									? 'bg-blue-600 text-white shadow-md'
 									: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
 							}`}
 						>
@@ -138,34 +162,34 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 					No hay datos para el período seleccionado
 				</div>
 			) : (
-				<div className="space-y-6">
-					{/* Summary Cards */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-							<div className="text-sm text-blue-600 dark:text-blue-400">Costo Total</div>
-							<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+				<div className="space-y-4 sm:space-y-6">
+					{/* Summary Cards - Responsive Grid */}
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+						<div className="bg-blue-50 dark:bg-blue-900/20 p-3 sm:p-4 rounded-lg">
+							<div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Costo Total</div>
+							<div className="text-lg sm:text-2xl font-bold text-blue-900 dark:text-blue-100">
 								{formatCurrencyEUR(analytics.totalCost)}
 							</div>
 						</div>
-						<div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-							<div className="text-sm text-green-600 dark:text-green-400">Costo Promedio/Día</div>
-							<div className="text-2xl font-bold text-green-900 dark:text-green-100">
+						<div className="bg-green-50 dark:bg-green-900/20 p-3 sm:p-4 rounded-lg">
+							<div className="text-xs sm:text-sm text-green-600 dark:text-green-400">Costo Promedio/Día</div>
+							<div className="text-lg sm:text-2xl font-bold text-green-900 dark:text-green-100">
 								{formatCurrencyEUR(analytics.averageDailyCost)}
 							</div>
 						</div>
-						<div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-							<div className="text-sm text-purple-600 dark:text-purple-400">Variación</div>
-							<div className={`text-2xl font-bold flex items-center gap-1 ${getPercentageChangeColor(analytics.percentageChange)}`}>
+						<div className="bg-purple-50 dark:bg-purple-900/20 p-3 sm:p-4 rounded-lg sm:col-span-2 lg:col-span-1">
+							<div className="text-xs sm:text-sm text-purple-600 dark:text-purple-400">Variación</div>
+							<div className={`text-lg sm:text-2xl font-bold flex items-center gap-1 ${getPercentageChangeColor(analytics.percentageChange)}`}>
 								<span>{getPercentageChangeIcon(analytics.percentageChange)}</span>
 								{Math.abs(analytics.percentageChange).toFixed(1)}%
 							</div>
 						</div>
 					</div>
 
-					{/* Cost Breakdown */}
-					<div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-						<h4 className="font-medium text-gray-900 dark:text-white mb-3">Desglose por Categoría</h4>
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+					{/* Cost Breakdown - Responsive Grid */}
+					<div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-lg">
+						<h4 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">Desglose por Categoría</h4>
+						<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 							{Object.entries(analytics.costByCategory).map(([category, cost]) => {
 								const percentage = analytics.totalCost > 0 ? (cost / analytics.totalCost) * 100 : 0
 								const categoryLabels = {
@@ -177,10 +201,10 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 								
 								return (
 									<div key={category} className="text-center">
-										<div className="text-sm text-gray-600 dark:text-gray-400">
+										<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 											{categoryLabels[category as keyof typeof categoryLabels]}
 										</div>
-										<div className="text-lg font-semibold text-gray-900 dark:text-white">
+										<div className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
 											{formatCurrencyEUR(cost)}
 										</div>
 										<div className="text-xs text-gray-500 dark:text-gray-400">
@@ -192,10 +216,10 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ activities, className =
 						</div>
 					</div>
 
-					{/* Cost Trend */}
-					<div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-						<h4 className="font-medium text-gray-900 dark:text-white mb-3">Tendencia de Costos (Últimos 7 días)</h4>
-						<div className="flex items-end justify-between h-32 gap-2">
+					{/* Cost Trend - Responsive */}
+					<div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-lg">
+						<h4 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">Tendencia de Costos (Últimos 7 días)</h4>
+						<div className="flex items-end justify-between h-24 sm:h-32 gap-1 sm:gap-2">
 							{analytics.costTrend.map((point, index) => {
 								const maxCost = Math.max(...analytics.costTrend.map(p => p.cost))
 								const height = maxCost > 0 ? (point.cost / maxCost) * 100 : 0

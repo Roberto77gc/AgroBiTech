@@ -132,53 +132,67 @@ export interface Activity {
 	_id: string
 	userId: string
 	
-	// Información básica
-	name: string
-	cropType: CropType
-	plantCount?: number
-	area: number
-	areaUnit: 'ha' | 'm2'
-	transplantDate?: Date
-	sigpacReference?: string
+	// === NIVEL 1: BÁSICO (SIEMPRE VISIBLE) ===
+	date: string
+	cropType: string
+	plantsCount: number
+	surfaceArea: number
+	waterUsed: number
 	
-	// Documentación
-	photos?: string[] // URLs de las fotos
-	
-	// Gestión de recursos
+	// === NIVEL 2: AVANZADO (PESTAÑAS OPCIONALES) ===
+	// Gestión de recursos avanzada
 	fertigation?: FertigationData
 	phytosanitary?: PhytosanitaryData
 	water?: WaterData
 	energy?: EnergyData
 	
-	// Información adicional
-	location?: string
-	weather?: string
-	notes?: string
-	status?: ActivityStatus
-	priority?: ActivityPriority
-	totalCost: number
+	// Información de ubicación y documentación
+	location?: { lat: number; lng: number }
+	photos?: string[]
+	weather?: any
 	
-	// Productos consumidos del inventario
-	consumedProducts?: Array<{
+	// Productos utilizados (nivel básico)
+	products: Array<{
+		name: string
+		category: string
+		quantity: number
+		unit: string
+		pricePerUnit: number
+		supplier?: string
+	}>
+	
+	// Costes y métricas
+	totalCost: number
+	costPerHectare: number
+	
+	// Información adicional
+	notes?: string
+	
+	// === PROPIEDADES DE COMPATIBILIDAD ===
+	// Para mantener compatibilidad con componentes existentes
+	name?: string // Alias para cropType
+	area?: number // Alias para surfaceArea
+	areaUnit?: 'ha' | 'm2' // Unidad de área
+	plantCount?: number // Alias para plantsCount
+	transplantDate?: string // Fecha de transplante
+	sigpacReference?: string // Referencia SIGPAC
+	cycleId?: string // ID del ciclo de cultivo
+	dayNumber?: number // Número del día en el ciclo
+	status?: 'planning' | 'in_progress' | 'completed' | 'paused' // Estado de la actividad
+	priority?: 'low' | 'medium' | 'high' // Prioridad
+	consumedProducts?: Array<{ // Productos consumidos del inventario
 		productId: string
 		productName: string
 		amount: number
 		unit: string
 	}>
 	
-	// Metadatos
+	// === METADATOS ===
 	createdAt: Date
 	updatedAt: Date
-	
-	// Campos de agrupación (opcionales)
-	cycleId?: string // Para agrupar actividades del mismo ciclo
-	dayNumber?: number // Número del día en el ciclo (1, 2, 3...)
 }
 
-export type CropType = string
 
-export type ActivityStatus = 'planning' | 'active' | 'completed' | 'paused' | 'cancelled'
-export type ActivityPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 export interface FertilizerRecord {
 	fertilizerType: string

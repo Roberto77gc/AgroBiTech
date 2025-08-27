@@ -2,7 +2,14 @@ import React, { useState, useMemo } from 'react'
 import { formatCurrencyEUR } from '../../utils/format'
 
 interface ExtendedKPIsProps {
-	activities: any[]
+	activities: Array<{
+		area?: number
+		plantCount?: number
+		totalCost?: number
+		createdAt?: string | Date
+		name?: string
+		date?: string | Date
+	}>
 	className?: string
 }
 
@@ -24,26 +31,23 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 		const processedDates = new Set<string>()
 
 		activities.forEach(activity => {
-			const dateKey = activity.date
+			const dateKey = (activity as any).date ?? activity.createdAt
 			if (processedDates.has(dateKey)) return
 
-			// Simulate crop batches based on activity dates
+			// Usar datos reales si existen; fallback simple si faltan
 			const batchId = `batch-${dateKey}`
-			const area = Math.random() * 10 + 1 // Simulated area between 1-11 ha
-			const plants = Math.floor(area * 1000) // Simulated plant density
+			const area = Number(activity.area ?? 0)
+			const plants = Number(activity.plantCount ?? 0)
 			
-			const totalCost = (activity.fertilizersCost || 0) + 
-							(activity.waterCost || 0) + 
-							(activity.phytosanitaryCost || 0) + 
-							(activity.otherExpensesCost || 0)
+			const totalCost = Number(activity.totalCost || 0)
 
 			batches.push({
 				id: batchId,
-				name: `Cultivo ${new Date(activity.date).toLocaleDateString('es-ES', { month: 'short' })}`,
+				name: String(activity.name || `Actividad ${new Date(dateKey as any).toLocaleDateString('es-ES', { month: 'short' })}`),
 				area,
 				plants,
 				totalCost,
-				startDate: activity.date
+				startDate: String(dateKey)
 			})
 
 			processedDates.add(dateKey)
@@ -138,64 +142,67 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 	}
 
 	return (
-		<div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
-			<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
-				KPIs Extendidos
-			</h3>
-
-			{/* Metric Selector */}
-			<div className="flex gap-2 mb-6">
-				{(['costPerHa', 'costPerPlant', 'efficiency'] as const).map((metric) => (
-					<button
-						key={metric}
-						onClick={() => setSelectedMetric(metric)}
-						className={`px-4 py-2 text-sm rounded-md transition-colors ${
-							selectedMetric === metric
-								? 'bg-blue-600 text-white'
-								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-						}`}
-					>
-						{getMetricLabel(metric)}
-					</button>
-				))}
+		<div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 ${className}`}>
+			{/* Header */}
+			<div className="mb-6">
+				<h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
+					KPIs Extendidos
+				</h3>
+				
+				{/* Metric Selector - Responsive */}
+				<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+					{(['costPerHa', 'costPerPlant', 'efficiency'] as const).map((metric) => (
+						<button
+							key={metric}
+							onClick={() => setSelectedMetric(metric)}
+							className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+								selectedMetric === metric
+									? 'bg-blue-600 text-white shadow-md'
+									: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+							}`}
+						>
+							{getMetricLabel(metric)}
+						</button>
+					))}
+				</div>
 			</div>
 
-			{/* Main KPI Display */}
-			<div className="text-center mb-8">
-				<div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+			{/* Main KPI Display - Responsive */}
+			<div className="text-center mb-6 sm:mb-8">
+				<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2">
 					{getMetricLabel(selectedMetric)}
 				</div>
-				<div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+				<div className="text-2xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
 					{formatCurrencyEUR(getMetricValue(selectedMetric))}
 				</div>
-				<div className="text-sm text-gray-500 dark:text-gray-400">
+				<div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
 					{getMetricUnit(selectedMetric)}
 				</div>
 			</div>
 
-			{/* Summary Grid */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+			{/* Summary Grid - Responsive */}
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
 				<div className="text-center">
-					<div className="text-sm text-gray-600 dark:text-gray-400">Área Total</div>
-					<div className="text-lg font-semibold text-gray-900 dark:text-white">
+					<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Área Total</div>
+					<div className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
 						{kpiData.totalArea.toFixed(1)} ha
 					</div>
 				</div>
 				<div className="text-center">
-					<div className="text-sm text-gray-600 dark:text-gray-400">Plantas</div>
-					<div className="text-lg font-semibold text-gray-900 dark:text-white">
+					<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Plantas</div>
+					<div className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
 						{kpiData.totalPlants.toLocaleString()}
 					</div>
 				</div>
 				<div className="text-center">
-					<div className="text-sm text-gray-600 dark:text-gray-400">Costo Total</div>
-					<div className="text-lg font-semibold text-gray-900 dark:text-white">
+					<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Costo Total</div>
+					<div className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
 						{formatCurrencyEUR(kpiData.totalCost)}
 					</div>
 				</div>
 				<div className="text-center">
-					<div className="text-sm text-gray-600 dark:text-gray-400">Tendencia</div>
-					<div className={`text-lg font-semibold flex items-center justify-center gap-1 ${
+					<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Tendencia</div>
+					<div className={`text-sm sm:text-lg font-semibold flex items-center justify-center gap-1 ${
 						kpiData.costTrend > 0 ? 'text-red-600' : 'text-green-600'
 					}`}>
 						<span>{kpiData.costTrend > 0 ? '↗' : '↘'}</span>
@@ -204,12 +211,12 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 				</div>
 			</div>
 
-			{/* Prediction */}
-			<div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-				<h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+			{/* Prediction - Responsive */}
+			<div className="bg-blue-50 dark:bg-blue-900/20 p-3 sm:p-4 rounded-lg">
+				<h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 text-sm sm:text-base">
 					Predicción Simple
 				</h4>
-				<div className="text-sm text-blue-700 dark:text-blue-300">
+				<div className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
 					Basado en la tendencia actual, el costo por hectárea podría ser{' '}
 					<span className="font-semibold">
 						{formatCurrencyEUR(kpiData.prediction)}
@@ -218,27 +225,27 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 				</div>
 			</div>
 
-			{/* Top Batches */}
-			<div className="mt-6">
-				<h4 className="font-medium text-gray-900 dark:text-white mb-3">
+			{/* Top Batches - Responsive */}
+			<div className="mt-4 sm:mt-6">
+				<h4 className="font-medium text-gray-900 dark:text-white mb-3 text-sm sm:text-base">
 					Rendimiento por Lote
 				</h4>
 				<div className="space-y-2">
 					{cropBatches.slice(0, 5).map((batch) => (
-						<div key={batch.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-							<div>
-								<div className="font-medium text-gray-900 dark:text-white">
+						<div key={batch.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg gap-2 sm:gap-0">
+							<div className="flex-1">
+								<div className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
 									{batch.name}
 								</div>
-								<div className="text-sm text-gray-600 dark:text-gray-400">
+								<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 									{batch.area.toFixed(1)} ha • {batch.plants.toLocaleString()} plantas
 								</div>
 							</div>
-							<div className="text-right">
-								<div className="font-semibold text-gray-900 dark:text-white">
+							<div className="text-left sm:text-right">
+								<div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
 									{formatCurrencyEUR(batch.totalCost)}
 								</div>
-								<div className="text-sm text-gray-600 dark:text-gray-400">
+								<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 									{formatCurrencyEUR(batch.totalCost / batch.area)}/ha
 								</div>
 							</div>

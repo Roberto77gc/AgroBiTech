@@ -31,7 +31,7 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
     const [formData, setFormData] = useState<DailyWaterRecord>({
 		date: '',
 		consumption: 0,
-		unit: 'L',
+		unit: 'm3',
 		cost: 0,
         notes: ''
 	})
@@ -39,8 +39,11 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
     const [waterUnit, setWaterUnit] = useState<string>('m3')
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
+	const [ariaStatus, setAriaStatus] = useState<string>('')
     const storageKey = useMemo(() => `water:draft:${activityName || 'default'}`, [activityName])
     const draftReadyRef = useRef(false)
+	const headingRef = useRef<HTMLHeadingElement | null>(null)
+	const modalRef = useRef<HTMLDivElement | null>(null)
 
 	useEffect(() => {
         if (isOpen) {
@@ -66,8 +69,27 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
                 }
             } catch {}
             finally { draftReadyRef.current = true }
+			try { headingRef.current?.focus() } catch {}
 		}
 	}, [isOpen, existingDay, storageKey])
+
+	// Focus trap básico
+	useEffect(() => {
+		if (!isOpen) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = modalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) { if (active === first) { e.preventDefault(); last.focus() } } else { if (active === last) { e.preventDefault(); first.focus() } }
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [isOpen])
 
     useEffect(() => {
         // Recalcular coste cuando cambie consumo, unidades o precio con helper de conversión
@@ -110,6 +132,7 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 			if (formData.consumption <= 0) newErrors.consumption = 'El consumo debe ser mayor a 0'
 			if (Object.keys(newErrors).length > 0) {
 				setErrors(newErrors)
+				setAriaStatus('Hay errores de validación en el formulario')
 				// Scroll al primer error
 				const firstKey = Object.keys(newErrors)[0]
 				const el = document.querySelector('[data-error-anchor="' + firstKey + '"]') as HTMLElement | null
@@ -128,8 +151,10 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
             try { localStorage.removeItem(storageKey) } catch {}
 			await onSubmit(updated)
 			onClose()
+			setAriaStatus('Día de agua guardado correctamente')
 		} catch (error) {
 			console.error('Error submitting water day:', error)
+			setAriaStatus('Error al guardar el día de agua')
 		} finally {
 			setIsSubmitting(false)
 		}
@@ -216,21 +241,24 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 	if (!isOpen) return null
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="water-modal-title" ref={modalRef}>
 			<div className={`w-full max-w-2xl rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-					<h2 className="text-xl font-bold">
+					<h2 id="water-modal-title" ref={headingRef} tabIndex={-1} className="text-xl font-bold">
 						{existingDay ? 'Editar Día de Agua' : 'Añadir Día de Agua'}
 					</h2>
 						<div className="flex items-center gap-2">
 							<button type="button" onClick={applyLastDay} className={`${isDarkMode ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-100 hover:bg-blue-200 text-blue-800'} px-3 py-1 rounded-lg text-sm`}>Usar último día</button>
-							<button onClick={attemptClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+							<button onClick={attemptClose} aria-label="Cerrar" className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
 						<X className="h-5 w-5" />
 							</button>
 						</div>
 				</div>
+
+				{/* SR announcements */}
+				<div className="sr-only" aria-live="polite">{[...Object.values(errors || {}).filter(Boolean), ariaStatus].filter(Boolean).join('. ')}</div>
 
 				<div className="p-6">
 					<div className="mb-4">
@@ -239,13 +267,13 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
 						</p>
 					</div>
 
-					<form id="water-form" onSubmit={handleSubmit} className="space-y-6">
+					<form id="water-form" onSubmit={handleSubmit} className="space-y-6" aria-busy={isSubmitting}>
 						<div data-error-anchor="date">
 							<label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
 								Fecha del Día
 							</label>
-							<input type="date" value={formData.date} onChange={(e) => handleInputChange('date', e.target.value)} className={`w-full px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
-							{errors.date && (<p className="text-red-500 text-sm mt-1">{errors.date}</p>)}
+							<input type="date" value={formData.date} onChange={(e) => handleInputChange('date', e.target.value)} className={`w-full px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} aria-invalid={Boolean(errors.date)} aria-describedby={errors.date ? 'water_date_error' : undefined} />
+							{errors.date && (<p id="water_date_error" className="text-red-500 text-sm mt-1">{errors.date}</p>)}
 						</div>
 
                         <div>
@@ -258,7 +286,7 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
                                     if (v.error) { setErrors(prev => ({ ...prev, consumption: v.error as string })); return }
                                     setErrors(prev => { const n: any = { ...prev }; delete n.consumption; return n })
                                     handleInputChange('consumption', Number(v.value))
-                                }} onFocus={handleNumberFocus} onKeyDown={(e) => { if (['e','E','+','-'].includes(e.key)) e.preventDefault() }} className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} placeholder="0" />
+                                }} onFocus={handleNumberFocus} onKeyDown={(e) => { if (['e','E','+','-'].includes(e.key)) e.preventDefault() }} className={`flex-1 px-3 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} placeholder="0" aria-invalid={Boolean(errors.consumption)} aria-describedby={errors.consumption ? 'water_consumption_error' : undefined} />
                                 <select value={formData.unit} onChange={(e) => {
                                     const u = e.target.value
                                     const ok = validateUnitForType(u, ['m3','L'])
@@ -270,8 +298,7 @@ const WaterDayModal: React.FC<WaterDayModalProps> = ({
                                     <option value="L">L</option>
                                 </select>
                             </div>
-                            {errors.consumption && (<p className="text-red-500 text-sm mt-1">{errors.consumption}</p>)}
-							{errors.consumption && (<p className="text-red-500 text-sm mt-1">{errors.consumption}</p>)}
+                            {errors.consumption && (<p id="water_consumption_error" className="text-red-500 text-sm mt-1">{errors.consumption}</p>)}
 						</div>
 
 						<div data-error-anchor="consumption">

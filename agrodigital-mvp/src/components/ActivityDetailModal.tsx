@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { X, Calendar, MapPin, Cloud, FileText, Euro, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2, History } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { X, Calendar, MapPin, Cloud, FileText, Euro, Tag, Leaf, Shield, Droplets, Package, Plus, Edit, Trash2, History, Download } from 'lucide-react'
+import { exportDailyPdfLike } from '../utils/pdf'
 import type { Activity, DailyFertigationRecord, DailyPhytosanitaryRecord, DailyWaterRecord } from '../types'
 import FertigationDayModal from './FertigationDayModal'
 import PhytosanitaryDayModal from './PhytosanitaryDayModal'
@@ -40,6 +41,62 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 	const [showCostBreakdownModal, setShowCostBreakdownModal] = useState(false)
 	const [costBreakdownData, setCostBreakdownData] = useState<any>(null)
   const [showMovementsModal, setShowMovementsModal] = useState(false)
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+  const modalRef = useRef<HTMLDivElement | null>(null)
+	const confirmHeadingRef = useRef<HTMLHeadingElement | null>(null)
+	const confirmModalRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    try { headingRef.current?.focus() } catch {}
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const container = modalRef.current
+      if (!container) return
+      const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (e.shiftKey) {
+        if (active === first) { e.preventDefault(); last.focus() }
+      } else {
+        if (active === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen])
+
+	useEffect(() => {
+		if (!isOpen) return
+		const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [isOpen, onClose])
+
+	// Confirm dialog focus
+	useEffect(() => {
+		if (!confirmState?.open) return
+		try { confirmHeadingRef.current?.focus() } catch {}
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = confirmModalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) { if (active === first) { e.preventDefault(); last.focus() } } else { if (active === last) { e.preventDefault(); first.focus() } }
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [confirmState])
   const notifyChanged = () => {
     try { onChanged?.() } catch {}
   }
@@ -324,7 +381,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 	if (!isOpen) return null
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center">
+		<div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title" ref={modalRef}>
 			{/* Overlay */}
 			<div 
 				className="absolute inset-0 bg-black bg-opacity-50"
@@ -343,11 +400,34 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						<span className={`px-3 py-1 text-sm font-medium rounded-full ${getCropTypeColor(activityState.cropType)}`}>
 							{activityState.cropType.charAt(0).toUpperCase() + activityState.cropType.slice(1)}
 						</span>
-						<h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+						<h2 id="activity-detail-title" ref={headingRef} tabIndex={-1} className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
 							{activityState.name}
 						</h2>
 					</div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          try {
+                            const summary = {
+                              name: activityState.name,
+                              cropType: activityState.cropType,
+                              area: `${activityState.area} ${activityState.areaUnit}`,
+                              totals: {
+                                fertigation: (activityState.fertigation?.dailyRecords || []).reduce((s, r) => s + Number(r.totalCost || 0), 0),
+                                phytosanitary: (activityState.phytosanitary?.dailyRecords || []).reduce((s, r) => s + Number(r.totalCost || 0), 0),
+                                water: (activityState.water?.dailyRecords || []).reduce((s, r) => s + Number(r.cost || 0), 0),
+                              },
+                              totalCost: activityState.totalCost,
+                              notes: activityState.notes || '',
+                            }
+                            exportDailyPdfLike(new Date().toISOString().split('T')[0], activityState.cropType || 'Actividad', summary)
+                          } catch (e) { console.error('Export error', e) }
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      >
+                        <Download className="w-4 h-4" />
+                        Exportar informe
+                      </button>
                       <button
                         onClick={() => setShowMovementsModal(true)}
                         className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
@@ -357,6 +437,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
                       </button>
                     <button
 						onClick={onClose}
+						aria-label="Cerrar"
 						className={`p-2 rounded-lg transition-colors ${
 							isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
 						}`}
@@ -365,6 +446,9 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					</button>
                     </div>
 				</div>
+
+				{/* SR announcements */}
+				<div className="sr-only" aria-live="polite"></div>
 
 				{/* Content */}
 				<div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -713,7 +797,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 											Ubicación
 										</p>
 										<p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-											{activityState.location}
+											            📍 Lat: {activityState.location?.lat}, Lng: {activityState.location?.lng}
 										</p>
 									</div>
 								</div>
@@ -824,7 +908,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						}}
 						onSubmit={handleFertigationDaySubmit}
 						existingDay={selectedDay}
-						activityName={activityState.name}
+						activityName={activityState.cropType || 'Actividad'}
 						isDarkMode={isDarkMode}
 					/>
 				)}
@@ -835,7 +919,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 						isOpen={showPhytosanitaryDayModal}
               onClose={() => setShowPhytosanitaryDayModal(false)}
               existingDay={selectedPhytoDay}
-						activityName={activityState.name}
+						activityName={activityState.cropType || 'Actividad'}
 						isDarkMode={isDarkMode}
 						onSubmit={handlePhytosanitaryDaySubmit}
 					/>
@@ -851,7 +935,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 							setSelectedWaterIndex(null)
 						}}
 						existingDay={selectedWaterDay}
-						activityName={activityState.name}
+						activityName={activityState.cropType || 'Actividad'}
 						isDarkMode={isDarkMode}
 						onSubmit={handleWaterDaySubmit}
 					/>
@@ -862,7 +946,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 					<CostBreakdownModal
 						isOpen={showCostBreakdownModal}
 						onClose={() => setShowCostBreakdownModal(false)}
-						activityName={activityState.name}
+						activityName={activityState.cropType || 'Actividad'}
 						date={new Date().toISOString().split('T')[0]}
 						costs={costBreakdownData}
 						isDarkMode={isDarkMode}
@@ -882,8 +966,9 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 
         {/* Confirm Dialog */}
         {confirmState?.open && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className={`w-full max-w-md rounded-xl p-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" ref={confirmModalRef}>
+            <div className={`w-full max-w-md rounded-xl p-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`} ref={confirmHeadingRef}>
+              <h3 id="confirm-dialog-title" ref={confirmHeadingRef} tabIndex={-1} className="text-lg font-semibold mb-2">Confirmación</h3>
               <p className="mb-4">{confirmState.message}</p>
               <div className="flex justify-end space-x-2">
                 <button onClick={() => setConfirmState(null)} className={`px-4 py-2 rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}>Cancelar</button>

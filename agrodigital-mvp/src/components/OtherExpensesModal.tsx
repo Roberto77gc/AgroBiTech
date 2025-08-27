@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { X, Plus, Trash2, DollarSign, Users, Wrench, Package, Truck } from 'lucide-react'
 import type { OtherExpenseRecord, ProductPrice } from '../types'
 import { formatCurrencyEUR } from '../utils/format'
@@ -23,6 +23,27 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 	const [availableProducts, setAvailableProducts] = useState<ProductPrice[]>([])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [errors, setErrors] = useState<{ [key: string]: string }>({})
+	const headingRef = useRef<HTMLHeadingElement | null>(null)
+	const modalRef = useRef<HTMLDivElement | null>(null)
+
+	useEffect(() => { if (isOpen) { try { headingRef.current?.focus() } catch {} } }, [isOpen])
+	useEffect(() => {
+		if (!isOpen) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Tab') return
+			const container = modalRef.current
+			if (!container) return
+			const focusable = container.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')
+			if (!focusable.length) return
+			const first = focusable[0]
+			const last = focusable[focusable.length - 1]
+			const active = document.activeElement as HTMLElement | null
+			if (e.shiftKey) { if (active === first) { e.preventDefault(); last.focus() } }
+			else { if (active === last) { e.preventDefault(); first.focus() } }
+		}
+		window.addEventListener('keydown', onKeyDown)
+		return () => window.removeEventListener('keydown', onKeyDown)
+	}, [isOpen])
 
 	useEffect(() => {
 		if (isOpen) {
@@ -205,13 +226,13 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 	if (!isOpen) return null
 
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="other-expenses-title" ref={modalRef}>
 			<div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl transition-colors ${
 				isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
 			}`}>
 				{/* Header */}
 				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-					<h2 className="text-xl font-bold flex items-center space-x-2">
+					<h2 id="other-expenses-title" ref={headingRef} tabIndex={-1} className="text-xl font-bold flex items-center space-x-2">
 						<DollarSign className="h-6 w-6 text-purple-600" />
 						<span>Gastos Adicionales</span>
 					</h2>
@@ -224,6 +245,9 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 						<X className="h-5 w-5" />
 					</button>
 				</div>
+
+				{/* SR announcements */}
+				<div className="sr-only" aria-live="polite">{Object.values(errors || {}).filter(Boolean).join('. ')}</div>
 
 				{/* Content */}
 				<div className="p-6">
@@ -331,6 +355,8 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 																	? 'bg-gray-700 border-gray-600 text-white' 
 																	: 'bg-white border-gray-300 text-gray-900'
 															}`}
+															aria-invalid={Boolean(errors[`expense_${index}`])}
+															aria-describedby={errors[`expense_${index}`] ? `expense_${index}_error` : undefined}
 														/>
 														<select
 															value={expense.unit || 'unidad'}
@@ -382,7 +408,7 @@ const OtherExpensesModal: React.FC<OtherExpensesModalProps> = ({
 											)}
 
 											{errors[`expense_${index}`] && (
-												<p className="text-red-500 text-sm mt-2">{errors[`expense_${index}`]}</p>
+												<p id={`expense_${index}_error`} className="text-red-500 text-sm mt-2">{errors[`expense_${index}`]}</p>
 											)}
 										</div>
 									))}

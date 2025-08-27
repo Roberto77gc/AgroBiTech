@@ -7,6 +7,7 @@ const DYNAMIC_CACHE = 'agrodigital-dynamic-v1'
 const STATIC_FILES = [
 	'/',
 	'/index.html',
+	'/offline.html',
 	'/manifest.json',
 	'/favicon.ico',
 	'/icons/icon-192x192.png',

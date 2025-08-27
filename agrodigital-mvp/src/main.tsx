@@ -17,3 +17,14 @@ createRoot(rootElement).render(
 		</BrowserRouter>
 	</StrictMode>,
 )
+
+// Registrar Service Worker solo en producción
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    try {
+      navigator.serviceWorker.register('/sw.js')
+    } catch (e) {
+      console.warn('SW registration failed', e)
+    }
+  })
+}
