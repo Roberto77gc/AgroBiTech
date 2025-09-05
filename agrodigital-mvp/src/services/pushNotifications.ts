@@ -70,7 +70,7 @@ class PushNotificationService {
 		try {
 			const subscription = await this.serviceWorkerRegistration.pushManager.subscribe({
 				userVisibleOnly: true,
-				applicationServerKey: this.urlBase64ToUint8Array(process.env.VITE_VAPID_PUBLIC_KEY || '')
+				applicationServerKey: this.urlBase64ToUint8Array(((import.meta as any)?.env?.VITE_VAPID_PUBLIC_KEY) || '')
 			})
 
 			console.log('Push subscription created:', subscription)
