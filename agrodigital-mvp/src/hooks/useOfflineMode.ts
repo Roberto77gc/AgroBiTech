@@ -40,8 +40,8 @@ export const useOfflineMode = () => {
 	})
 
 	const syncInProgress = useRef(false)
-	const syncInterval = useRef<NodeJS.Timeout | null>(null)
-	const reconnectTimeout = useRef<NodeJS.Timeout | null>(null)
+	const syncInterval = useRef<number | null>(null)
+	const reconnectTimeout = useRef<number | null>(null)
 
 	// Initialize offline storage
 	useEffect(() => {
@@ -108,7 +108,7 @@ export const useOfflineMode = () => {
 	// Periodic sync check (every 5 minutes when online)
 	useEffect(() => {
 		if (state.isOnline) {
-			syncInterval.current = setInterval(async () => {
+			syncInterval.current = window.setInterval(async () => {
 				await checkPendingSync()
 				if (state.hasPendingSync && !syncInProgress.current) {
 					attemptSync()
@@ -164,7 +164,7 @@ export const useOfflineMode = () => {
 			console.log('Starting sync with server...')
 			
 			// Simulate progress updates
-			const progressInterval = setInterval(() => {
+			const progressInterval = window.setInterval(() => {
 				setState(prev => ({
 					...prev,
 					syncProgress: Math.min(prev.syncProgress + 10, 90)
@@ -382,10 +382,10 @@ export const useOfflineMode = () => {
 				const retryDelay = Math.min(1000 * Math.pow(2, Math.min(result.failed, 5)), 30000)
 				
 				if (reconnectTimeout.current) {
-					clearTimeout(reconnectTimeout.current)
+					window.clearTimeout(reconnectTimeout.current)
 				}
 
-				reconnectTimeout.current = setTimeout(() => {
+				reconnectTimeout.current = window.setTimeout(() => {
 					retryFailedSyncs()
 				}, retryDelay)
 			}
