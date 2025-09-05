@@ -4,6 +4,8 @@ interface IUser extends Document {
     email: string;
     name: string;
     password: string;
+    resetPasswordToken?: string | undefined;
+    resetPasswordExpires?: Date | undefined;
     createdAt: Date;
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;

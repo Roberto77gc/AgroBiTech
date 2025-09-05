@@ -10,6 +10,8 @@ import {
   checkUsers,
   resetPassword
 } from '../controllers/authController';
+import { forgotPassword } from '../controllers/authController';
+import { validateResetToken } from '../controllers/authController';
 
 const router = express.Router();
 
@@ -25,15 +27,25 @@ router.post('/register', register);
 // @access  Public
 router.post('/login', login);
 
+// @route   POST /api/auth/forgot
+// @desc    Request password reset (stub)
+// @access  Public
+router.post('/forgot', forgotPassword);
+
+// @route   GET /api/auth/reset/validate
+// @desc    Validate reset token
+// @access  Public
+router.get('/reset/validate', validateResetToken);
+
 // @route   GET /api/auth/check-users
 // @desc    Check existing users (temporary)
 // @access  Public
 router.get('/check-users', checkUsers);
 
-// @route   POST /api/auth/reset-password
-// @desc    Reset user password (temporary)
+// @route   POST /api/auth/reset
+// @desc    Reset user password with token (stub)
 // @access  Public
-router.post('/reset-password', resetPassword);
+router.post('/reset', resetPassword);
 
 // === RUTAS PRIVADAS ===
 

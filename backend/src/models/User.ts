@@ -7,6 +7,8 @@ interface IUser extends Document {
 	email: string
 	name: string
 	password: string
+	resetPasswordToken?: string | undefined
+	resetPasswordExpires?: Date | undefined
 	createdAt: Date
 	updatedAt: Date
 	comparePassword(candidatePassword: string): Promise<boolean>
@@ -36,6 +38,14 @@ const UserSchema = new Schema<IUser>({
 		required: [true, 'Password is required'],
 		minlength: [6, 'Password must be at least 6 characters long'],
 		select: false // Don't include password in queries by default
+	},
+	resetPasswordToken: {
+		type: String,
+		default: undefined
+	},
+	resetPasswordExpires: {
+		type: Date,
+		default: undefined
 	}
 }, {
 	timestamps: true,

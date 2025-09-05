@@ -1,6 +1,8 @@
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User'
+import crypto from 'crypto'
+import { sendEmail } from '../services/emailService'
 
 // Definir la interfaz AuthenticatedRequest localmente
 interface AuthenticatedRequest extends Request {
@@ -282,30 +284,98 @@ export const checkUsers = async (_req: Request, res: Response) => {
 // Endpoint temporal para resetear contraseña
 export const resetPassword = async (req: Request, res: Response) => {
 	try {
-		const { email, newPassword } = req.body
+		const { token, newPassword } = req.body
 
-		if (!email || !newPassword) {
-			return res.status(400).json({ message: 'Email y nueva contraseña son requeridos' })
+		if (!token || !newPassword) {
+			return res.status(400).json({ message: 'Token y nueva contraseña son requeridos' })
 		}
 
 		if (newPassword.length < 6) {
 			return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' })
 		}
 
-		const user = await User.findOne({ email }).select('+password')
+		const hashedToken = crypto.createHash('sha256').update(String(token)).digest('hex')
+		const user = await User.findOne({
+			resetPasswordToken: hashedToken,
+			resetPasswordExpires: { $gt: new Date() }
+		}).select('+password')
+
 		if (!user) {
-			return res.status(404).json({ message: 'Usuario no encontrado' })
+			return res.status(400).json({ message: 'Token inválido o expirado' })
 		}
 
 		user.password = newPassword
+		user.resetPasswordToken = undefined
+		user.resetPasswordExpires = undefined
 		await user.save()
 
-		return res.json({
-			success: true,
-			message: 'Contraseña reseteada exitosamente'
-		})
-  } catch (error) {
+		return res.json({ success: true, message: 'Contraseña restablecida exitosamente' })
+	} catch (error) {
 		console.error('Error in resetPassword:', error)
 		return res.status(500).json({ message: 'Error interno del servidor' })
 	}
+}
+
+export const validateResetToken = async (req: Request, res: Response) => {
+	try {
+		const token = String(req.query.token || (req.body as any)?.token || '')
+		if (!token) {
+			return res.status(400).json({ message: 'Token requerido' })
+		}
+		const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+		const user = await User.findOne({
+			resetPasswordToken: hashedToken,
+			resetPasswordExpires: { $gt: new Date() }
+		}).select('_id')
+		if (!user) {
+			return res.status(400).json({ message: 'Token inválido o expirado' })
+		}
+		return res.status(200).json({ success: true })
+	} catch (error) {
+		console.error('Error in validateResetToken:', error)
+		return res.status(500).json({ message: 'Error interno del servidor' })
+	}
+}
+
+// Stub de forgot password: siempre responde 200 para no filtrar existencia de email
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const email = String((req.body && req.body.email) || '')
+    if (!email) {
+      return res.status(400).json({ message: 'Email es requerido' })
+    }
+
+    const user = await User.findOne({ email })
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex')
+      const expires = new Date(Date.now() + 1000 * 60 * 30) // 30 minutos
+
+      user.resetPasswordToken = hashedToken
+      user.resetPasswordExpires = expires
+      await user.save()
+
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+      const resetUrl = `${baseUrl}/reset?token=${rawToken}`
+
+      const { previewUrl } = await sendEmail({
+        to: email,
+        subject: 'Recupera tu contraseña - AgroBiTech',
+        text: `Para restablecer tu contraseña, visita: ${resetUrl}`,
+        html: `<p>Has solicitado restablecer tu contraseña.</p><p><a href="${resetUrl}">Restablecer contraseña</a></p><p>Si no fuiste tú, ignora este mensaje.</p>`
+      })
+
+      if (previewUrl) {
+        console.log('📧 Preview email URL:', previewUrl)
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Si el correo existe, enviaremos instrucciones de recuperación.'
+    })
+  } catch (error) {
+    console.error('Error in forgotPassword:', error)
+    return res.status(200).json({ success: true })
+  }
 }

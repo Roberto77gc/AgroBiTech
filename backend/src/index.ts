@@ -86,6 +86,9 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/templates', templateRoutes);
 
+// Auth: forgot password (stub)
+// (moved to routes/auth.ts)
+
 // Legacy routes for compatibility - REMOVED TO AVOID CONFLICTS
 // app.use('/', authRoutes);
 // app.use('/activities', dashboardRoutes);
@@ -162,7 +165,7 @@ const startServer = async (): Promise<void> => {
     const server = app.listen(PORT, () => {
       console.log(`
 🌱 ================================
-🚀 AgroDigital Backend Server
+🚀 AgroBiTech Backend Server
 💎 Enterprise Grade Architecture
 🌍 Environment: ${NODE_ENV}
 📡 Port: ${PORT}

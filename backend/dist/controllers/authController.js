@@ -3,9 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPassword = exports.checkUsers = exports.deleteAccount = exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
+exports.forgotPassword = exports.validateResetToken = exports.resetPassword = exports.checkUsers = exports.deleteAccount = exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
+const crypto_1 = __importDefault(require("crypto"));
+const emailService_1 = require("../services/emailService");
 const register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -219,23 +221,26 @@ const checkUsers = async (_req, res) => {
 exports.checkUsers = checkUsers;
 const resetPassword = async (req, res) => {
     try {
-        const { email, newPassword } = req.body;
-        if (!email || !newPassword) {
-            return res.status(400).json({ message: 'Email y nueva contraseña son requeridos' });
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ message: 'Token y nueva contraseña son requeridos' });
         }
         if (newPassword.length < 6) {
             return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
         }
-        const user = await User_1.default.findOne({ email }).select('+password');
+        const hashedToken = crypto_1.default.createHash('sha256').update(String(token)).digest('hex');
+        const user = await User_1.default.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: new Date() }
+        }).select('+password');
         if (!user) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
+            return res.status(400).json({ message: 'Token inválido o expirado' });
         }
         user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
         await user.save();
-        return res.json({
-            success: true,
-            message: 'Contraseña reseteada exitosamente'
-        });
+        return res.json({ success: true, message: 'Contraseña restablecida exitosamente' });
     }
     catch (error) {
         console.error('Error in resetPassword:', error);
@@ -243,4 +248,63 @@ const resetPassword = async (req, res) => {
     }
 };
 exports.resetPassword = resetPassword;
+const validateResetToken = async (req, res) => {
+    try {
+        const token = String(req.query.token || req.body?.token || '');
+        if (!token) {
+            return res.status(400).json({ message: 'Token requerido' });
+        }
+        const hashedToken = crypto_1.default.createHash('sha256').update(token).digest('hex');
+        const user = await User_1.default.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: new Date() }
+        }).select('_id');
+        if (!user) {
+            return res.status(400).json({ message: 'Token inválido o expirado' });
+        }
+        return res.status(200).json({ success: true });
+    }
+    catch (error) {
+        console.error('Error in validateResetToken:', error);
+        return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+};
+exports.validateResetToken = validateResetToken;
+const forgotPassword = async (req, res) => {
+    try {
+        const email = String((req.body && req.body.email) || '');
+        if (!email) {
+            return res.status(400).json({ message: 'Email es requerido' });
+        }
+        const user = await User_1.default.findOne({ email });
+        if (user) {
+            const rawToken = crypto_1.default.randomBytes(32).toString('hex');
+            const hashedToken = crypto_1.default.createHash('sha256').update(rawToken).digest('hex');
+            const expires = new Date(Date.now() + 1000 * 60 * 30);
+            user.resetPasswordToken = hashedToken;
+            user.resetPasswordExpires = expires;
+            await user.save();
+            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const resetUrl = `${baseUrl}/reset?token=${rawToken}`;
+            const { previewUrl } = await (0, emailService_1.sendEmail)({
+                to: email,
+                subject: 'Recupera tu contraseña - AgroDigital',
+                text: `Para restablecer tu contraseña, visita: ${resetUrl}`,
+                html: `<p>Has solicitado restablecer tu contraseña.</p><p><a href="${resetUrl}">Restablecer contraseña</a></p><p>Si no fuiste tú, ignora este mensaje.</p>`
+            });
+            if (previewUrl) {
+                console.log('📧 Preview email URL:', previewUrl);
+            }
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Si el correo existe, enviaremos instrucciones de recuperación.'
+        });
+    }
+    catch (error) {
+        console.error('Error in forgotPassword:', error);
+        return res.status(200).json({ success: true });
+    }
+};
+exports.forgotPassword = forgotPassword;
 //# sourceMappingURL=authController.js.map
