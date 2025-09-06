@@ -12,6 +12,11 @@ export const API_BASE_URL = (() => {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:3000/api'
     }
+    // Prioridad 2.2: despliegue de producción con subdominio app.agrobitech.com
+    // Evitamos depender de la variable de build si por cualquier motivo no se inyectó
+    if (host === 'app.agrobitech.com') {
+      return 'https://api.agrobitech.com/api'
+    }
   }
   // Prioridad 3: opción inyectada en window (por si se setea en runtime)
   if (typeof window !== 'undefined' && (window as any).VITE_API_BASE_URL) {
