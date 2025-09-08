@@ -4,6 +4,7 @@ import type { InventoryItem, InventoryAlert } from '../types'
 import { inventoryAPI } from '../services/api'
 import { useToast } from './ui/ToastProvider'
 import InventoryMovementsModal from './InventoryMovementsModal'
+import ProductManagementModal from './ProductManagementModal'
 
 interface InventoryModalProps {
 	isOpen: boolean
@@ -25,6 +26,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 	const [isLoading, setIsLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [showMovementsModal, setShowMovementsModal] = useState(false)
+  const [showProductsModal, setShowProductsModal] = useState(false)
 	const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
 	const [formData, setFormData] = useState({
 		productId: '',
@@ -264,6 +266,13 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                     >
                       <History className="w-4 h-4" />
                       Ver movimientos
+                    </button>
+                    <button
+                      onClick={() => setShowProductsModal(true)}
+                      className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    >
+                      <Package className="w-4 h-4" />
+                      Productos y Precios
                     </button>
                     {(() => {
 							try {
@@ -721,6 +730,13 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
         <InventoryMovementsModal
           isOpen={showMovementsModal}
           onClose={() => setShowMovementsModal(false)}
+          isDarkMode={isDarkMode}
+        />
+      )}
+      {showProductsModal && (
+        <ProductManagementModal
+          isOpen={showProductsModal}
+          onClose={() => setShowProductsModal(false)}
           isDarkMode={isDarkMode}
         />
       )}
