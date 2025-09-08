@@ -114,8 +114,8 @@ export const authAPI = {
 	// Validar token existente
 	validate: async () => {
 		try {
-			const response = await authenticatedRequest('/validate')
-			return response
+			const res = await authenticatedRequest('/auth/profile')
+			return { valid: !!res?.success }
 		} catch (error) {
 			console.error('Error validando token:', error)
 			return { valid: false }
@@ -279,7 +279,11 @@ export const activityAPI = {
 export const dashboardAPI = {
 	// Obtener estadísticas del dashboard
 	getStats: async () => {
-		return await authenticatedRequest('/dashboard')
+		const res = await authenticatedRequest('/dashboard')
+		// Normalizar respuesta a un objeto de stats llano
+		if (res?.stats) return res.stats
+		if (res?.data?.stats) return res.data.stats
+		return res
 	},
 
 	// Obtener actividades recientes para el dashboard
