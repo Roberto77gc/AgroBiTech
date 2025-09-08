@@ -26,6 +26,7 @@ import { exportDailyPdfLike } from '../utils/pdf'
 import { useToast } from './ui/ToastProvider'
 import { useNavigate } from 'react-router-dom'
 import { validatePositiveNumberField, validateUnitForType } from '../utils/validation'
+import PurchaseRegistrationModal from './PurchaseRegistrationModal'
 
 interface FertigationDayModalProps {
 	isOpen: boolean
@@ -84,32 +85,9 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     const draftReadyRef = useRef(false)
     const scheduledInvIdsRef = useRef<Set<string>>(new Set())
     const invTimerRef = useRef<number | undefined>(undefined)
-    const scheduleInventoryFetch = useCallback((productId: string) => {
-        if (!productId) return
-        scheduledInvIdsRef.current.add(productId)
-        if (!invTimerRef.current) {
-            // @ts-ignore
-            invTimerRef.current = window.setTimeout(async () => {
-                const ids = Array.from(scheduledInvIdsRef.current)
-                scheduledInvIdsRef.current.clear()
-                invTimerRef.current = undefined
-                try {
-                    const mapRes = await inventoryAPI.getByProducts(ids)
-                    const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = mapRes?.items || {}
-                    setStockByProduct(prev => {
-                        const next = { ...prev }
-                        for (const id of ids) {
-                            const it = itemsMap[id]
-                            next[id] = { stock: Number(it?.currentStock) || 0, unit: it?.unit || prev[id]?.unit || 'kg' }
-                        }
-                        return next
-                    })
-                    setInventoryLastSyncAt(Date.now())
-                } catch {}
-            }, 150)
-        }
-    }, [])
-	// Cache local de stock por producto para validación inmediata
+    const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+    const [purchasePrefill, setPurchasePrefill] = useState<{ productId?: string } | null>(null)
+    // Cache local de stock por producto para validación inmediata
 	const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
     const { success: toastSuccess, error: toastError, show: toastShow } = useToast()
     const navigate = useNavigate()
@@ -1011,7 +989,18 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                                             </p>
                                         )}
                                         <StockBadge info={stockByProduct[fertilizer.productId || '']} isDarkMode={isDarkMode} />
-									</div>
+                                        {fertilizer.productId && (
+                                            <div className="mt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setPurchasePrefill({ productId: fertilizer.productId! }); setShowPurchaseModal(true) }}
+                                                    className={`${isDarkMode ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'} px-2 py-1 rounded text-xs`}
+                                                >
+                                                    Registrar compra
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
 
 												<div>
 													<label className={`block text-sm font-medium mb-2 ${
@@ -1404,10 +1393,22 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 				isDarkMode={isDarkMode}
 			/>
 
+			{/* Modal de Registro de Compras (prefill con producto) */}
+			{showPurchaseModal && (
+				<PurchaseRegistrationModal
+					isOpen={showPurchaseModal}
+					onClose={() => {
+						setShowPurchaseModal(false)
+						setPurchasePrefill(null)
+					}}
+					isDarkMode={isDarkMode}
+				/>
+			)}
+
 			{/* Toast */}
 
 		</div>
 	)
 }
 
-export default FertigationDayModal 
+export default FertigationDayModal  
