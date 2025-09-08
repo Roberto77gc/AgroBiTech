@@ -158,7 +158,7 @@ const Dashboard: React.FC = () => {
 		groups[cropType].totalCost += activity.totalCost || 0
 		groups[cropType].totalArea += activity.surfaceArea || 0
 		
-		const activityDate = new Date(activity.date)
+		const activityDate = new Date((activity as any).createdAt || (activity as any).date || Date.now())
 		if (!groups[cropType].firstDate || activityDate < groups[cropType].firstDate) {
 			groups[cropType].firstDate = activityDate
 		}
