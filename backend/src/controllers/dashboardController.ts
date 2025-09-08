@@ -346,9 +346,17 @@ export const createActivity = async (req: AuthenticatedRequest, res: Response) =
 			message: 'Actividad creada exitosamente',
 			activity
 		})
-  } catch (error) {
+	} catch (error: any) {
 		console.error('Error creating activity:', error)
-		res.status(500).json({ message: 'Error interno del servidor' })
+		if (error?.name === 'ValidationError') {
+			const details: Record<string, string> = {}
+			for (const key in (error.errors || {})) {
+				// @ts-ignore
+				details[key] = error.errors[key]?.message || 'invalid'
+			}
+			return res.status(400).json({ success: false, message: 'Datos inválidos', errors: details })
+		}
+		return res.status(500).json({ success: false, message: 'Error interno del servidor' })
 	}
 }
 
