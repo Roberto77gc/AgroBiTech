@@ -68,7 +68,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ logout }) => {
               </div>
               <h1 className={`text-xl font-semibold ${
                 isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>AgroDigital</h1>
+              }`}>AgroBiTech</h1>
             </div>
 
             {/* Navegación Principal - Desktop */}

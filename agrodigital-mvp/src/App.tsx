@@ -109,7 +109,7 @@ function App() {
           </Suspense>
         {showInstallBanner && (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border rounded-xl shadow-lg p-3 flex items-center gap-3 z-50">
-            <span className="text-sm text-gray-700">Instala AgroDigital como app</span>
+            <span className="text-sm text-gray-700">Instala AgroBiTech como app</span>
             <button
               className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
               onClick={async () => {
@@ -181,7 +181,7 @@ function App() {
 				</div>
         {showInstallBanner && (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border rounded-xl shadow-lg p-3 flex items-center gap-3 z-50">
-            <span className="text-sm text-gray-700">Instala AgroDigital como app</span>
+            <span className="text-sm text-gray-700">Instala AgroBiTech como app</span>
             <button
               className="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700"
               onClick={async () => {

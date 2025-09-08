@@ -170,7 +170,7 @@ export const authAPI = {
 export const activityAPI = {
 	// Crear nueva actividad
 	create: async (activityData: any) => {
-		return await authenticatedRequest('/activities', {
+		return await authenticatedRequest('/dashboard/activities', {
 			method: 'POST',
 			body: JSON.stringify(activityData)
 		})
@@ -185,18 +185,18 @@ export const activityAPI = {
 		if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
 		if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
 
-		const endpoint = `/activities${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+		const endpoint = `/dashboard/activities${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
 		return await authenticatedRequest(endpoint)
 	},
 
 	// Obtener actividad específica
 	getById: async (id: string) => {
-		return await authenticatedRequest(`/activities/${id}`)
+		return await authenticatedRequest(`/dashboard/activities/${id}`)
 	},
 
 	// Actualizar actividad
 	update: async (id: string, activityData: any) => {
-		return await authenticatedRequest(`/activities/${id}`, {
+		return await authenticatedRequest(`/dashboard/activities/${id}`, {
 			method: 'PUT',
 			body: JSON.stringify(activityData)
 		})
@@ -204,7 +204,7 @@ export const activityAPI = {
 
 	// Eliminar actividad
 	delete: async (id: string) => {
-		return await authenticatedRequest(`/activities/${id}`, {
+		return await authenticatedRequest(`/dashboard/activities/${id}`, {
 			method: 'DELETE'
 		})
 	},
@@ -212,63 +212,63 @@ export const activityAPI = {
 	// ===== FUNCIONALIDADES AVANZADAS =====
 	// Fertirriego
 	addFertigationDay: async (activityId: string, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/fertigation`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/fertigation`, {
 			method: 'POST',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	updateFertigationDay: async (activityId: string, dayIndex: number, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/fertigation/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
 			method: 'PUT',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	deleteFertigationDay: async (activityId: string, dayIndex: number) => {
-		return await authenticatedRequest(`/activities/${activityId}/fertigation/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/fertigation/${dayIndex}`, {
 			method: 'DELETE'
 		})
 	},
 
 	// Fitosanitarios
 	addPhytosanitaryDay: async (activityId: string, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/phytosanitary`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary`, {
 			method: 'POST',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	updatePhytosanitaryDay: async (activityId: string, dayIndex: number, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/phytosanitary/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
 			method: 'PUT',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	deletePhytosanitaryDay: async (activityId: string, dayIndex: number) => {
-		return await authenticatedRequest(`/activities/${activityId}/phytosanitary/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/phytosanitary/${dayIndex}`, {
 			method: 'DELETE'
 		})
 	},
 
 	// Agua
 	addWaterDay: async (activityId: string, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/water`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/water`, {
 			method: 'POST',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	updateWaterDay: async (activityId: string, dayIndex: number, dayData: any) => {
-		return await authenticatedRequest(`/activities/${activityId}/water/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
 			method: 'PUT',
 			body: JSON.stringify(dayData)
 		})
 	},
 
 	deleteWaterDay: async (activityId: string, dayIndex: number) => {
-		return await authenticatedRequest(`/activities/${activityId}/water/${dayIndex}`, {
+		return await authenticatedRequest(`/dashboard/activities/${activityId}/water/${dayIndex}`, {
 			method: 'DELETE'
 		})
 	}
