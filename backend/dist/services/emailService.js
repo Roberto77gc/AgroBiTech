@@ -35,7 +35,7 @@ const getTransporter = async () => {
 };
 const sendEmail = async (options) => {
     const transport = await getTransporter();
-    const from = process.env.EMAIL_FROM || 'AgroDigital <no-reply@agrodigital.local>';
+    const from = process.env.EMAIL_FROM || 'AgroBiTech <no-reply@agrobitech.local>';
     const info = await transport.sendMail({
         from,
         to: options.to,

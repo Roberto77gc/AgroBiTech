@@ -145,7 +145,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ logout }) => {
               {navigationItems.map((item) => {
                 const Icon = item.icon
                 const isActive = currentRoute === item.id
-                return (
+  return (
                   <button
                     key={item.id}
                     onClick={() => handleNavigation(item.path)}

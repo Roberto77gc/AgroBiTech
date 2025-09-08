@@ -385,33 +385,33 @@ export const productAPI = {
 	getAll: async () => {
 		return await authenticatedRequest('/products')
 	},
-
+	
 	// Obtener productos por tipo
 	getByType: async (type: string) => {
 		return await authenticatedRequest(`/products/type/${type}`)
 	},
-
+	
 	// Crear producto
 	create: async (productData: any) => {
 		return await authenticatedRequest('/products', {
-			method: 'POST',
-			body: JSON.stringify(productData)
+		method: 'POST',
+		body: JSON.stringify(productData)
 		})
 	},
-
+	
 	// Actualizar producto
 	update: async (id: string, productData: any) => {
 		return await authenticatedRequest(`/products/${id}`, {
-			method: 'PUT',
-			body: JSON.stringify(productData)
+		method: 'PUT',
+		body: JSON.stringify(productData)
 		})
 	},
-
+	
 	// Eliminar producto
 	delete: async (id: string) => {
 		return await authenticatedRequest(`/products/${id}`, {
-			method: 'DELETE'
-		})
+		method: 'DELETE'
+	})
 	}
 }
 
@@ -420,28 +420,28 @@ export const supplierAPI = {
 	getAll: async () => {
 		return await authenticatedRequest('/suppliers')
 	},
-
+	
 	// Crear proveedor
 	create: async (supplierData: any) => {
 		return await authenticatedRequest('/suppliers', {
-			method: 'POST',
-			body: JSON.stringify(supplierData)
+		method: 'POST',
+		body: JSON.stringify(supplierData)
 		})
 	},
-
+	
 	// Actualizar proveedor
 	update: async (id: string, supplierData: any) => {
 		return await authenticatedRequest(`/suppliers/${id}`, {
-			method: 'PUT',
-			body: JSON.stringify(supplierData)
+		method: 'PUT',
+		body: JSON.stringify(supplierData)
 		})
 	},
-
+	
 	// Eliminar proveedor
 	delete: async (id: string) => {
 		return await authenticatedRequest(`/suppliers/${id}`, {
-			method: 'DELETE'
-		})
+		method: 'DELETE'
+	})
 	}
 }
 
@@ -450,30 +450,30 @@ export const purchaseAPI = {
 	getAll: async () => {
 		return await authenticatedRequest('/purchases')
 	},
-
+	
 	// Crear compra
 	create: async (purchaseData: any) => {
 		return await authenticatedRequest('/purchases', {
-			method: 'POST',
-			body: JSON.stringify(purchaseData)
+		method: 'POST',
+		body: JSON.stringify(purchaseData)
 		})
 	},
-
+	
 	// Actualizar compra
 	update: async (id: string, purchaseData: any) => {
 		return await authenticatedRequest(`/purchases/${id}`, {
-			method: 'PUT',
-			body: JSON.stringify(purchaseData)
+		method: 'PUT',
+		body: JSON.stringify(purchaseData)
 		})
 	},
-
+	
 	// Eliminar compra
 	delete: async (id: string) => {
 		return await authenticatedRequest(`/purchases/${id}`, {
-			method: 'DELETE'
+		method: 'DELETE'
 		})
 	},
-
+	
 	// Obtener compras por producto
 	getByProduct: async (productId: string) => {
 		return await authenticatedRequest(`/purchases/product/${productId}`)
@@ -489,15 +489,15 @@ export const templateAPI = {
 	// Crear plantilla
 	create: async (data: any) => {
 		return await authenticatedRequest('/templates', {
-			method: 'POST',
+		method: 'POST',
 			body: JSON.stringify(data)
 		})
 	},
-
+	
 	// Actualizar plantilla
 	update: async (id: string, data: any) => {
 		return await authenticatedRequest(`/templates/${id}`, {
-			method: 'PUT',
+		method: 'PUT',
 			body: JSON.stringify(data)
 		})
 	},
@@ -507,5 +507,5 @@ export const templateAPI = {
 		return await authenticatedRequest(`/templates/${id}`, {
 			method: 'DELETE'
 		})
-	}
+}
 } 

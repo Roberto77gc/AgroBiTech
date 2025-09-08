@@ -30,14 +30,23 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// CORS configuration (allowlist for prod and dev)
+const allowedOrigins = [
+  process.env.FRONTEND_URL || '',
+  'https://app.agrobitech.com',
+  'http://localhost:5173'
+].filter(Boolean)
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error('Not allowed by CORS'))
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-};
-app.use(cors(corsOptions));
+}));
 
 // Rate limiting
 const limiter = rateLimit({

@@ -288,7 +288,7 @@ const forgotPassword = async (req, res) => {
             const resetUrl = `${baseUrl}/reset?token=${rawToken}`;
             const { previewUrl } = await (0, emailService_1.sendEmail)({
                 to: email,
-                subject: 'Recupera tu contraseña - AgroDigital',
+                subject: 'Recupera tu contraseña - AgroBiTech',
                 text: `Para restablecer tu contraseña, visita: ${resetUrl}`,
                 html: `<p>Has solicitado restablecer tu contraseña.</p><p><a href="${resetUrl}">Restablecer contraseña</a></p><p>Si no fuiste tú, ignora este mensaje.</p>`
             });

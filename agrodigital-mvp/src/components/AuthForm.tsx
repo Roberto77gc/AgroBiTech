@@ -67,9 +67,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
 
 		try {
 			const endpoint = isLogin ? '/auth/login' : '/auth/register'
-			const payload = isLogin
-				? { email: formData.email, password: formData.password }
-				: { name: formData.name, email: formData.email, password: formData.password }
+            const payload = isLogin
+                ? { email: formData.email, password: formData.password }
+                : { name: formData.name, email: formData.email, password: formData.password }
 
 			const res = await fetch(`${API_BASE_URL}${endpoint}`, {
 				method: 'POST',

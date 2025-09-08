@@ -1,7 +1,7 @@
-// Service Worker para AgroDigital
-const CACHE_NAME = 'agrodigital-v1'
-const STATIC_CACHE = 'agrodigital-static-v1'
-const DYNAMIC_CACHE = 'agrodigital-dynamic-v1'
+// Service Worker para AgroBiTech
+const CACHE_NAME = 'agrobitech-v2'
+const STATIC_CACHE = 'agrobitech-static-v2'
+const DYNAMIC_CACHE = 'agrobitech-dynamic-v2'
 
 // Archivos estáticos para cache
 const STATIC_FILES = [
@@ -161,10 +161,10 @@ self.addEventListener('push', (event) => {
 		console.log('Service Worker: Push data:', data)
 		
 		const options = {
-			body: data.body || 'Nueva notificación de AgroDigital',
+			body: data.body || 'Nueva notificación de AgroBiTech',
 			icon: data.icon || '/icons/icon-192x192.png',
 			badge: data.badge || '/icons/icon-192x192.png',
-			tag: data.tag || 'agrodigital-notification',
+			tag: data.tag || 'agrobitech-notification',
 			data: data.data || {},
 			actions: data.actions || [],
 			requireInteraction: true,
@@ -173,23 +173,23 @@ self.addEventListener('push', (event) => {
 		}
 
 		event.waitUntil(
-			self.registration.showNotification(data.title || 'AgroDigital', options)
+			self.registration.showNotification(data.title || 'AgroBiTech', options)
 		)
 	} catch (error) {
 		console.error('Service Worker: Error parsing push data:', error)
 		
 		// Fallback notification
 		const options = {
-			body: 'Nueva notificación de AgroDigital',
+			body: 'Nueva notificación de AgroBiTech',
 			icon: '/icons/icon-192x192.png',
 			badge: '/icons/icon-192x192.png',
-			tag: 'agrodigital-notification',
+			tag: 'agrobitech-notification',
 			requireInteraction: true,
 			silent: false
 		}
 
 		event.waitUntil(
-			self.registration.showNotification('AgroDigital', options)
+			self.registration.showNotification('AgroBiTech', options)
 		)
 	}
 })

@@ -127,7 +127,7 @@ const startServer = async () => {
         const server = app.listen(PORT, () => {
             console.log(`
 🌱 ================================
-🚀 AgroDigital Backend Server
+🚀 AgroBiTech Backend Server
 💎 Enterprise Grade Architecture
 🌍 Environment: ${NODE_ENV}
 📡 Port: ${PORT}

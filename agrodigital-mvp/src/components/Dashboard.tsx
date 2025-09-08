@@ -14,7 +14,7 @@ import {
 import { useOutletContext } from 'react-router-dom'
 import { useToast } from './ui/ToastProvider'
 import { formatCurrencyEUR } from '../utils/format'
-import { activityAPI } from '../services/api'
+import { activityAPI, dashboardAPI } from '../services/api'
 import type { Activity as ActivityType } from '../types'
 import CacheStatus from './common/CacheStatus'
 import AnalyticsPanel from './common/AnalyticsPanel'
@@ -57,29 +57,23 @@ const Dashboard: React.FC = () => {
 	const loadDashboardData = async () => {
 		setIsLoadingDashboard(true)
 		try {
-			// Cargar estadísticas del dashboard
-			const token = localStorage.getItem('token')
-			const statsResponse = await fetch('http://localhost:3000/api/dashboard/stats', {
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
-			const statsData = await statsResponse.json()
-			if (statsData.success) {
-				setStats(statsData.data)
+			// Cargar estadísticas del dashboard (vía API centralizada)
+			const statsRes = await dashboardAPI.getStats()
+			if (statsRes?.success) {
+				setStats(statsRes.data)
+			} else {
+				// fallback por si la API devuelve directamente el objeto de stats
+				setStats(statsRes)
 			}
 
-			// Cargar actividades recientes
-			const activitiesResponse = await fetch('http://localhost:3000/api/dashboard/activities?limit=10', {
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				}
-			})
-			const activitiesData = await activitiesResponse.json()
-			if (activitiesData.success) {
-				setActivities(activitiesData.data)
+			// Cargar actividades recientes (vía API centralizada)
+			const activitiesRes = await dashboardAPI.getRecentActivities(10)
+			if (activitiesRes?.success) {
+				setActivities(activitiesRes.data || activitiesRes.activities || [])
+			} else if (Array.isArray(activitiesRes)) {
+				setActivities(activitiesRes)
+			} else {
+				setActivities([])
 			}
 		} catch (error) {
 			console.error('Error loading dashboard data:', error)

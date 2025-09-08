@@ -161,8 +161,8 @@ function App() {
 								<AgroBiTechLogo size="md" />
 							</div>
 							<span className="hidden sm:inline bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow">
-								MVP 2025
-							</span>
+									MVP 2025
+								</span>
 						</div>
 					</div>
 				</header>
@@ -174,7 +174,7 @@ function App() {
 							{window.location.pathname.startsWith('/reset') ? (
 								<ResetPasswordPage />
 							) : (
-								<AuthForm onLogin={handleLogin} />
+							<AuthForm onLogin={handleLogin} />
 							)}
 						</div>
 					</div>
