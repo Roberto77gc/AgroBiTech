@@ -8,12 +8,14 @@ interface PurchaseRegistrationModalProps {
 	isOpen: boolean
 	onClose: () => void
 	isDarkMode: boolean
+	onSaved?: () => void
 }
 
 const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({ 
 	isOpen, 
 	onClose, 
-	isDarkMode 
+	isDarkMode,
+	onSaved
 }) => {
   const { success: toastSuccess, error: toastError } = useToast()
 	const [purchases, setPurchases] = useState<ProductPurchase[]>([])
@@ -38,6 +40,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 		unit: '',
 		notes: ''
 	})
+	const [updateProductPrice, setUpdateProductPrice] = useState<boolean>(false)
 
 	useEffect(() => {
 		if (isOpen) {
@@ -140,6 +143,9 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
       try {
         await purchaseAPI.create(formData)
         toastSuccess('Compra registrada exitosamente')
+        if (updateProductPrice && formData.productId && formData.pricePerUnit > 0) {
+            try { await productAPI.update(formData.productId, { pricePerUnit: formData.pricePerUnit }) } catch {}
+        }
       } catch (error) {
         console.error('Error adding purchase:', error)
         toastError('Error al registrar la compra')
@@ -159,10 +165,12 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 			unit: '',
 			notes: ''
 		})
+		setUpdateProductPrice(false)
 		
 		setEditingPurchase(null)
 		setShowAddForm(false)
 		loadData()
+		try { onSaved && onSaved() } catch {}
 	}
 
 	const handleEdit = (purchase: ProductPurchase) => {
@@ -208,6 +216,7 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 			unit: '',
 			notes: ''
 		})
+		setUpdateProductPrice(false)
 		setEditingPurchase(null)
 		setShowAddForm(false)
 	}
@@ -405,25 +414,29 @@ const PurchaseRegistrationModal: React.FC<PurchaseRegistrationModalProps> = ({
 										}`}>
 											Precio por Unidad (€) *
 										</label>
-																					<input
-												type="number"
-												required
-												step="0.01"
-												min="0"
-												value={formData.pricePerUnit}
-												onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
-												onFocus={(e) => {
-													if (e.target.value === '0') {
-														e.target.value = ''
-													}
-												}}
-												className={`w-full px-3 py-2 border rounded-lg transition-colors ${
-													isDarkMode 
-														? 'bg-gray-600 border-gray-500 text-white' 
-														: 'bg-white border-gray-300 text-gray-900'
-												}`}
-												placeholder="0.00"
-											/>
+										<input
+											type="number"
+											required
+											step="0.01"
+											min="0"
+											value={formData.pricePerUnit}
+											onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
+											onFocus={(e) => {
+												if (e.target.value === '0') {
+													e.target.value = ''
+												}
+											}}
+											className={`w-full px-3 py-2 border rounded-lg transition-colors ${
+												isDarkMode 
+													? 'bg-gray-600 border-gray-500 text-white' 
+													: 'bg-white border-gray-300 text-gray-900'
+											}`}
+											placeholder="0.00"
+										/>
+										<label className={`mt-2 inline-flex items-center gap-2 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+											<input type="checkbox" checked={updateProductPrice} onChange={(e) => setUpdateProductPrice(e.target.checked)} />
+											Actualizar precio del producto con esta compra
+										</label>
 									</div>
 									
 									<div>

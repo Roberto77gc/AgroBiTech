@@ -846,6 +846,27 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 							<X className="h-5 w-5" />
 						</button>
 					</div>
+					{/* Coste del registro: fertilizantes + agua */}
+					<div className="mt-3 flex items-center justify-between">
+						<span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>Coste del registro</span>
+						<span className="font-semibold text-green-600">
+							{(() => {
+								const fertSubtotal = (formData.fertilizers || []).reduce((s: number, f: any) => {
+									const product = f.productId ? productById.get(f.productId) : undefined
+									const unitPrice = Number(product?.pricePerUnit ?? f.price ?? 0)
+									const unit = (product?.unit || f.unit || 'kg') as any
+									const qty = convertAmount(Number(f.fertilizerAmount || 0), (f.unit as any) || unit, unit)
+									return s + (qty * unitPrice)
+								}, 0)
+								const water = availableFertilizers.find(p => p.type === 'water')
+								const waterUnit = (water?.unit || 'L') as any
+								const waterPrice = Number(water?.pricePerUnit || 0)
+								const waterQty = convertAmount(Number(formData.waterConsumption || 0), formData.waterUnit as any, waterUnit)
+								const waterSubtotal = waterQty * waterPrice
+								return formatCurrencyEUR(fertSubtotal + waterSubtotal)
+							})()}
+						</span>
+					</div>
 				</div>
 
 				{/* Screen reader announcements for aggregated errors and status */}
@@ -1415,6 +1436,11 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 						setShowPurchaseModal(false)
 					}}
 					isDarkMode={isDarkMode}
+					onSaved={() => {
+						// tras guardar una compra, recargar productos y cerrar
+						try { loadData() } catch {}
+						setShowPurchaseModal(false)
+					}}
 				/>
 			)}
 
