@@ -83,8 +83,6 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     // Borrador y autosave
     const storageKey = useMemo(() => `fertigation:draft:${activityName || 'default'}`, [activityName])
     const draftReadyRef = useRef(false)
-    const scheduledInvIdsRef = useRef<Set<string>>(new Set())
-    const invTimerRef = useRef<number | undefined>(undefined)
     const [showPurchaseModal, setShowPurchaseModal] = useState(false)
     // Cache local de stock por producto para validación inmediata
 	const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
@@ -112,6 +110,23 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 		if (n > 1_000_000_000) n = 1_000_000_000
 		return Math.round(n * 1000) / 1000
 	}, [])
+
+    // Prefetch de inventario para productos seleccionados (implementación simple)
+    const scheduleInventoryFetch = useCallback(async (productId: string) => {
+        try {
+            if (!productId) return
+            const res = await inventoryAPI.getByProducts([productId])
+            const itemsMap: Record<string, { _id: string; currentStock: number; unit: string }> = res?.items || {}
+            const it = itemsMap[productId]
+            if (it) {
+                setStockByProduct(prev => ({
+                    ...prev,
+                    [productId]: { stock: Number(it.currentStock) || 0, unit: it.unit || prev[productId]?.unit || 'kg' }
+                }))
+                setInventoryLastSyncAt(Date.now())
+            }
+        } catch {}
+    }, [])
 
     // Validación en tiempo real de stock para fertilizantes
     useEffect(() => {
