@@ -86,7 +86,6 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
     const scheduledInvIdsRef = useRef<Set<string>>(new Set())
     const invTimerRef = useRef<number | undefined>(undefined)
     const [showPurchaseModal, setShowPurchaseModal] = useState(false)
-    const [purchasePrefill, setPurchasePrefill] = useState<{ productId?: string } | null>(null)
     // Cache local de stock por producto para validación inmediata
 	const [stockByProduct, setStockByProduct] = useState<Record<string, { stock: number; unit: string; minStock?: number; criticalStock?: number }>>({})
     const { success: toastSuccess, error: toastError, show: toastShow } = useToast()
@@ -993,7 +992,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
                                             <div className="mt-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setPurchasePrefill({ productId: fertilizer.productId! }); setShowPurchaseModal(true) }}
+                                                    onClick={() => { setShowPurchaseModal(true) }}
                                                     className={`${isDarkMode ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'} px-2 py-1 rounded text-xs`}
                                                 >
                                                     Registrar compra
@@ -1399,7 +1398,6 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					isOpen={showPurchaseModal}
 					onClose={() => {
 						setShowPurchaseModal(false)
-						setPurchasePrefill(null)
 					}}
 					isDarkMode={isDarkMode}
 				/>
