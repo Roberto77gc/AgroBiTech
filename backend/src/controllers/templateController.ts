@@ -3,13 +3,23 @@ import Template from '../models/Template'
 
 export const listTemplates = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId
+    const userId = (req as any).user?.userId
+    if (!userId) {
+      console.error('No userId found in request')
+      return res.status(401).json({ success: false, message: 'Usuario no autenticado' })
+    }
+    
     const type = req.query.type as string | undefined
     const query: any = { userId }
     if (type) query.type = type
+    
+    console.log('Querying templates with:', query)
     const templates = await Template.find(query).sort({ updatedAt: -1 })
+    console.log('Found templates:', templates.length)
+    
     return res.json({ success: true, templates })
   } catch (e) {
+    console.error('Error in listTemplates:', e)
     return res.status(500).json({ success: false, message: 'Error listando plantillas' })
   }
 }
