@@ -17,8 +17,8 @@ export const API_BASE_URL = (() => {
     }
   }
   
-  // Fallback: Railway URL (configurar en Vercel)
-  return 'https://agrodigital-backend.railway.app/api'
+  // Fallback: Railway URL correcta
+  return 'https://api.agrobitech.com/api'
 })()
 
 const redirectToLogin = () => {
@@ -119,7 +119,7 @@ export const authAPI = {
 
 	// Login
 	login: async (credentials: { email: string; password: string }) => {
-		const response = await fetch(`${API_BASE_URL}/login`, {
+		const response = await fetch(`${API_BASE_URL}/auth/login`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(credentials)
@@ -140,7 +140,7 @@ export const authAPI = {
 
 	// Registro
 	register: async (userData: { email: string; password: string; name: string }) => {
-		const response = await fetch(`${API_BASE_URL}/register`, {
+		const response = await fetch(`${API_BASE_URL}/auth/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(userData)
