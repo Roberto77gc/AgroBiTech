@@ -54,7 +54,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 		date: '',
 		fertilizers: [],
 		waterConsumption: 0,
-		waterUnit: 'm3',
+		waterUnit: 'L',
 		notes: '',
 		totalCost: 0
 	})
@@ -169,7 +169,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 					date: new Date().toISOString().split('T')[0],
 					fertilizers: [],
 					waterConsumption: 0,
-					waterUnit: (() => { try { return localStorage.getItem('fertigation:waterUnit') || 'm3' } catch { return 'm3' } })(),
+					waterUnit: (() => { try { return localStorage.getItem('fertigation:waterUnit') || 'L' } catch { return 'L' } })(),
 					notes: '',
 					totalCost: 0
 				})
@@ -287,7 +287,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
             const tpl = createFertigationTemplate(today, {
                 fertilizers: [],
                 waterConsumption: 10,
-                waterUnit: 'm3',
+                waterUnit: 'L',
                 notes: 'Riego estándar',
             })
             setFormData({ ...tpl })
@@ -321,7 +321,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
             date: source.date || new Date().toISOString().split('T')[0],
             fertilizers: source.fertilizers || [],
             waterConsumption: source.waterConsumption || 0,
-            waterUnit: source.waterUnit || 'm3',
+            waterUnit: source.waterUnit || 'L',
             totalCost: 0,
             notes: source.notes || '',
         }
@@ -383,7 +383,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
             date: new Date().toISOString().split('T')[0],
             fertilizers: source.fertilizers || [],
             waterConsumption: source.waterConsumption || 0,
-            waterUnit: source.waterUnit || 'm3',
+            waterUnit: source.waterUnit || 'L',
             totalCost: 0,
             notes: source.notes || ''
         }
@@ -802,7 +802,7 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 									date: new Date().toISOString().split('T')[0],
 									fertilizers: [],
 									waterConsumption: 0,
-									waterUnit: (() => { try { return localStorage.getItem('fertigation:waterUnit') || 'm3' } catch { return 'm3' } })(),
+									waterUnit: (() => { try { return localStorage.getItem('fertigation:waterUnit') || 'L' } catch { return 'L' } })(),
 									notes: '',
 									totalCost: 0
 								})
@@ -1210,8 +1210,8 @@ const FertigationDayModal: React.FC<FertigationDayModalProps> = ({
 											: 'bg-white border-gray-300 text-gray-900'
 									}`}
 								>
-										<option value="m3">m³</option>
-										<option value="L">L</option>
+									<option value="L">L</option>
+									<option value="m3">m³</option>
 								</select>
 							</div>
 						</div>

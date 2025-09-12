@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { formatCurrencyEUR } from '../../utils/format'
+import { convertArea, formatArea, calculateCostPerM2 } from '../../utils/conversions'
 
 interface ExtendedKPIsProps {
 	activities: Array<{
@@ -23,7 +24,7 @@ interface CropBatch {
 }
 
 const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' }) => {
-	const [selectedMetric, setSelectedMetric] = useState<'costPerHa' | 'costPerPlant' | 'efficiency'>('costPerHa')
+	const [selectedMetric, setSelectedMetric] = useState<'costPerM2' | 'costPerPlant' | 'efficiency'>('costPerM2')
 
 	const cropBatches = useMemo(() => {
 		// Group activities by crop/batch (simplified - using date ranges)
@@ -63,13 +64,14 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 		const totalPlants = cropBatches.reduce((sum, batch) => sum + batch.plants, 0)
 		const totalCost = cropBatches.reduce((sum, batch) => sum + batch.totalCost, 0)
 
-		// Calculate KPIs
-		const costPerHa = totalArea > 0 ? totalCost / totalArea : 0
+		// Calculate KPIs - convertir área a m² para cálculos
+		const totalAreaM2 = convertArea(totalArea, 'ha', 'm²')
+		const costPerM2 = calculateCostPerM2(totalCost, totalAreaM2)
 		const costPerPlant = totalPlants > 0 ? totalCost / totalPlants : 0
 
-		// Calculate efficiency (cost per ha per day)
+		// Calculate efficiency (cost per m² per day)
 		const avgDays = cropBatches.length > 0 ? 30 : 0 // Simplified
-		const efficiency = avgDays > 0 ? costPerHa / avgDays : 0
+		const efficiency = avgDays > 0 ? costPerM2 / avgDays : 0
 
 		// Calculate trends
 		const recentBatches = cropBatches.slice(0, 3)
@@ -88,11 +90,11 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 
 		// Simple prediction (linear trend)
 		const prediction = costTrend > 0 
-			? costPerHa * (1 + (costTrend / 100) * 0.1) // 10% of trend
-			: costPerHa * (1 + (costTrend / 100) * 0.05) // 5% of trend
+			? costPerM2 * (1 + (costTrend / 100) * 0.1) // 10% of trend
+			: costPerM2 * (1 + (costTrend / 100) * 0.05) // 5% of trend
 
 		return {
-			costPerHa,
+			costPerM2,
 			costPerPlant,
 			efficiency,
 			costTrend,
@@ -105,9 +107,9 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 
 	const getMetricLabel = (metric: string) => {
 		switch (metric) {
-			case 'costPerHa': return 'Costo por Hectárea'
+			case 'costPerM2': return 'Costo por m²'
 			case 'costPerPlant': return 'Costo por Planta'
-			case 'efficiency': return 'Eficiencia (€/ha/día)'
+			case 'efficiency': return 'Eficiencia (€/m²/día)'
 			default: return ''
 		}
 	}
@@ -115,7 +117,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 	const getMetricValue = (metric: string) => {
 		if (!kpiData) return 0
 		switch (metric) {
-			case 'costPerHa': return kpiData.costPerHa
+			case 'costPerM2': return kpiData.costPerM2
 			case 'costPerPlant': return kpiData.costPerPlant
 			case 'efficiency': return kpiData.efficiency
 			default: return 0
@@ -124,9 +126,9 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 
 	const getMetricUnit = (metric: string) => {
 		switch (metric) {
-			case 'costPerHa': return '€/ha'
+			case 'costPerM2': return '€/m²'
 			case 'costPerPlant': return '€/planta'
-			case 'efficiency': return '€/ha/día'
+			case 'efficiency': return '€/m²/día'
 			default: return ''
 		}
 	}
@@ -151,7 +153,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 				
 				{/* Metric Selector - Responsive */}
 				<div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-					{(['costPerHa', 'costPerPlant', 'efficiency'] as const).map((metric) => (
+					{(['costPerM2', 'costPerPlant', 'efficiency'] as const).map((metric) => (
 						<button
 							key={metric}
 							onClick={() => setSelectedMetric(metric)}
@@ -185,7 +187,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 				<div className="text-center">
 					<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Área Total</div>
 					<div className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white">
-						{kpiData.totalArea.toFixed(1)} ha
+						{formatArea(kpiData.totalArea, 'ha', 0)}
 					</div>
 				</div>
 				<div className="text-center">
@@ -217,7 +219,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 					Predicción Simple
 				</h4>
 				<div className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
-					Basado en la tendencia actual, el costo por hectárea podría ser{' '}
+					Basado en la tendencia actual, el costo por m² podría ser{' '}
 					<span className="font-semibold">
 						{formatCurrencyEUR(kpiData.prediction)}
 					</span>{' '}
@@ -238,7 +240,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 									{batch.name}
 								</div>
 								<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-									{batch.area.toFixed(1)} ha • {batch.plants.toLocaleString()} plantas
+									{formatArea(batch.area, 'ha', 0)} • {batch.plants.toLocaleString()} plantas
 								</div>
 							</div>
 							<div className="text-left sm:text-right">
@@ -246,7 +248,7 @@ const ExtendedKPIs: React.FC<ExtendedKPIsProps> = ({ activities, className = '' 
 									{formatCurrencyEUR(batch.totalCost)}
 								</div>
 								<div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-									{formatCurrencyEUR(batch.totalCost / batch.area)}/ha
+									{formatCurrencyEUR(calculateCostPerM2(batch.totalCost, convertArea(batch.area, 'ha', 'm²')))}/m²
 								</div>
 							</div>
 						</div>

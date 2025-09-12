@@ -24,6 +24,7 @@ import type {
 } from '../types'
 import { formatCurrencyEUR } from '../utils/format'
 import { convertAmount } from '../utils/units'
+import { convertArea, formatArea } from '../utils/conversions'
 import { productAPI, supplierAPI, purchaseAPI, inventoryAPI } from '../services/api'
 import StockBadge from './common/StockBadge'
 
@@ -821,8 +822,8 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
                     onChange={e => handleInputChange('areaUnit', e.target.value)}
                     className={`px-4 py-2 border rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                   >
-                    <option value="ha">ha</option>
                     <option value="m2">m²</option>
+                    <option value="ha">ha</option>
                   </select>
                 </div>
                 {errors.area && <p id="activity_area_error" className="text-red-500 text-sm mt-1">{errors.area}</p>}

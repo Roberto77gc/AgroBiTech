@@ -1,29 +1,24 @@
-// Prefer environment variable; fallback to same-origin '/api'
-const IS_DEV = (import.meta as any)?.env?.DEV ?? false
+// Configuración de API para producción
 export const API_BASE_URL = (() => {
-  // Prioridad 1: variable de entorno explícita
-  const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL
+  // Prioridad 1: variable de entorno de Vite
+  const envUrl = import.meta.env.VITE_API_BASE_URL
   if (envUrl) return envUrl
-  // Prioridad 2: modo desarrollo → usar backend local por defecto
-  if (IS_DEV) return 'http://localhost:3000/api'
-  // Prioridad 2.1: si estamos en localhost/127.0.0.1 por cualquier motivo
+  
+  // Prioridad 2: desarrollo local
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000/api'
+  }
+  
+  // Prioridad 3: producción - usar Railway
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:3000/api'
     }
-    // Prioridad 2.2: despliegue de producción con subdominio app.agrobitech.com
-    // Evitamos depender de la variable de build si por cualquier motivo no se inyectó
-    if (host === 'app.agrobitech.com') {
-      return 'https://api.agrobitech.com/api'
-    }
   }
-  // Prioridad 3: opción inyectada en window (por si se setea en runtime)
-  if (typeof window !== 'undefined' && (window as any).VITE_API_BASE_URL) {
-    return (window as any).VITE_API_BASE_URL
-  }
-  // Fallback producción: mismo origen con prefijo /api
-  return (typeof window !== 'undefined') ? `${window.location.origin}/api` : 'http://localhost:3000/api'
+  
+  // Fallback: Railway URL (configurar en Vercel)
+  return 'https://agrodigital-backend.railway.app/api'
 })()
 
 const redirectToLogin = () => {
