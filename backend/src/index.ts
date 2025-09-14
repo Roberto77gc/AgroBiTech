@@ -15,6 +15,7 @@ import supplierRoutes from './routes/suppliers';
 import purchaseRoutes from './routes/purchases';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import templateRoutes from './routes/templates';
+import waitlistRoutes from './routes/waitlist';
 
 // Load environment variables
 dotenv.config();
@@ -94,6 +95,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 // Auth: forgot password (stub)
 // (moved to routes/auth.ts)
@@ -148,6 +150,10 @@ app.get('/', (_req, res) => {
         updateProduct: 'PUT /api/inventory/:productId',
         deleteProduct: 'DELETE /api/inventory/:productId',
         getLowStock: 'GET /api/inventory/:userId/low-stock'
+      },
+      waitlist: {
+        subscribe: 'POST /api/waitlist',
+        stats: 'GET /api/waitlist/stats'
       }
     }
   });
