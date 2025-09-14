@@ -43,7 +43,7 @@ const rateLimit = (req: express.Request, res: express.Response, next: express.Ne
   next();
 };
 
-// POST /api/waitlist - Suscribirse a la lista de espera
+// POST /api/waitlist - Suscribirse a la lista de espera (v1.0.1)
 router.post('/', rateLimit, async (req: express.Request, res: express.Response) => {
   try {
     const { email, source = 'landing_page', language = 'es' } = req.body;
