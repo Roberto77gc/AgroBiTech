@@ -35,13 +35,27 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.FRONTEND_URL || '',
   'https://app.agrobitech.com',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'https://www.agrobitech.com', // Hostinger landing page
+  'file://' // Para archivos locales (temporal)
 ].filter(Boolean)
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Permitir requests sin origen (archivos locales, Postman, etc.)
     if (!origin) return callback(null, true)
+    
+    // Permitir orígenes en la lista blanca
     if (allowedOrigins.includes(origin)) return callback(null, true)
+    
+    // Permitir archivos locales (file://)
+    if (origin.startsWith('file://')) return callback(null, true)
+    
+    // Permitir localhost en desarrollo
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true)
+    }
+    
     return callback(new Error('Not allowed by CORS'))
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
