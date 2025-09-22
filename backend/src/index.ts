@@ -37,6 +37,8 @@ const allowedOrigins = [
   'https://app.agrobitech.com',
   'http://localhost:5173',
   'https://www.agrobitech.com', // Hostinger landing page
+  'http://127.0.0.1:5500', // Live Server local
+  'http://localhost:5500', // Live Server local
   'file://' // Para archivos locales (temporal)
 ].filter(Boolean)
 
@@ -51,11 +53,17 @@ app.use(cors({
     // Permitir archivos locales (file://)
     if (origin.startsWith('file://')) return callback(null, true)
     
-    // Permitir localhost en desarrollo
+    // Permitir localhost y 127.0.0.1 en desarrollo
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true)
     }
     
+    // Permitir Live Server (puerto 5500)
+    if (origin.includes(':5500')) {
+      return callback(null, true)
+    }
+    
+    console.log('CORS blocked origin:', origin)
     return callback(new Error('Not allowed by CORS'))
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
