@@ -111,13 +111,20 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
     `;
     
     try {
-      await sendEmail({
+      console.log('📧 Enviando email de notificación a contacto@agrobitech.com...');
+      const emailResult = await sendEmail({
         to: 'contacto@agrobitech.com',
         subject,
         html: emailBody
       });
+      console.log('✅ Email enviado exitosamente:', emailResult);
     } catch (emailError) {
-      console.error('Error enviando email de notificación:', emailError);
+      console.error('❌ Error enviando email de notificación:', emailError);
+      console.error('❌ Detalles del error:', {
+        message: emailError.message,
+        code: emailError.code,
+        response: emailError.response
+      });
       // No fallar la suscripción por error de email
     }
     

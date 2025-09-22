@@ -20,8 +20,21 @@ const getTransporter = async (): Promise<nodemailer.Transporter> => {
 			auth: {
 				user: process.env.SMTP_USER,
 				pass: process.env.SMTP_PASS
+			},
+			tls: {
+				rejectUnauthorized: false
 			}
 		})
+		
+		// Verificar conexión SMTP
+		transporter.verify((error, success) => {
+			if (error) {
+				console.error('❌ SMTP connection error:', error)
+			} else {
+				console.log('✅ SMTP server is ready to take our messages')
+			}
+		})
+		
 		return transporter
 	}
 
