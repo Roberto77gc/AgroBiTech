@@ -47,6 +47,17 @@ const rateLimit = (req: express.Request, res: express.Response, next: express.Ne
 // POST /api/waitlist - Suscribirse a la lista de espera (v1.0.1)
 router.post('/', rateLimit, async (req: express.Request, res: express.Response) => {
   try {
+    // DEBUG: Verificar variables de entorno
+    console.log('🔍 DEBUG: SENDGRID_API_KEY está configurada:', !!process.env.SENDGRID_API_KEY);
+    console.log('🔍 DEBUG: Valor parcial de SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.substring(0, 5) + '...' : 'No definida');
+    console.log('🔍 DEBUG: EMAIL_FROM:', process.env.EMAIL_FROM);
+    console.log('🔍 DEBUG: Todas las variables de entorno relacionadas con email:', {
+      SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      SMTP_HOST: process.env.SMTP_HOST,
+      SMTP_USER: process.env.SMTP_USER
+    });
+    
     const { email, source = 'landing_page', language = 'es' } = req.body;
     
     // Validaciones
@@ -113,7 +124,10 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
     `;
     
     // Intentar con SendGrid primero (más confiable)
-    if (process.env.SENDGRID_API_KEY) {
+    const hasSendGrid = process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.trim() !== '';
+    console.log('🔍 DEBUG: ¿Tiene SendGrid configurado?', hasSendGrid);
+    
+    if (hasSendGrid) {
       try {
         console.log('📧 Enviando email con SendGrid a contacto@agrobitech.com...');
         const sendGridResult = await sendEmailWithSendGrid({
