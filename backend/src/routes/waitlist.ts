@@ -1,6 +1,7 @@
 import express from 'express';
 import { DatabaseConnection } from '../config/database';
 import { sendEmail } from '../services/emailService';
+import { sendEmailWithSendGrid } from '../services/sendgridService';
 import { validateEmail } from '../utils/validation';
 
 const router = express.Router();
@@ -110,22 +111,54 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
       <p><em>Este email fue enviado automáticamente desde la landing page de AgroBiTech.</em></p>
     `;
     
-    try {
-      console.log('📧 Enviando email de notificación a contacto@agrobitech.com...');
-      const emailResult = await sendEmail({
-        to: 'contacto@agrobitech.com',
-        subject,
-        html: emailBody
-      });
-      console.log('✅ Email enviado exitosamente:', emailResult);
-    } catch (emailError) {
-      console.error('❌ Error enviando email de notificación:', emailError);
-      console.error('❌ Detalles del error:', {
-        message: emailError.message,
-        code: emailError.code,
-        response: emailError.response
-      });
-      // No fallar la suscripción por error de email
+    // Intentar con SendGrid primero (más confiable)
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        console.log('📧 Enviando email con SendGrid a contacto@agrobitech.com...');
+        const sendGridResult = await sendEmailWithSendGrid({
+          to: 'contacto@agrobitech.com',
+          subject,
+          html: emailBody
+        });
+        
+        if (sendGridResult.success) {
+          console.log('✅ Email enviado exitosamente con SendGrid:', sendGridResult.messageId);
+        } else {
+          console.error('❌ Error con SendGrid:', sendGridResult.error);
+          throw new Error(sendGridResult.error);
+        }
+      } catch (sendGridError) {
+        console.error('❌ SendGrid falló, intentando con SMTP...', sendGridError);
+        // Fallback a SMTP
+        try {
+          const emailResult = await sendEmail({
+            to: 'contacto@agrobitech.com',
+            subject,
+            html: emailBody
+          });
+          console.log('✅ Email enviado exitosamente con SMTP:', emailResult);
+        } catch (smtpError) {
+          console.error('❌ Error con SMTP también:', smtpError);
+        }
+      }
+    } else {
+      // Solo SMTP si no hay SendGrid
+      try {
+        console.log('📧 Enviando email con SMTP a contacto@agrobitech.com...');
+        const emailResult = await sendEmail({
+          to: 'contacto@agrobitech.com',
+          subject,
+          html: emailBody
+        });
+        console.log('✅ Email enviado exitosamente con SMTP:', emailResult);
+      } catch (emailError) {
+        console.error('❌ Error enviando email de notificación:', emailError);
+        console.error('❌ Detalles del error:', {
+          message: emailError.message,
+          code: emailError.code,
+          response: emailError.response
+        });
+      }
     }
     
     // Respuesta de éxito
