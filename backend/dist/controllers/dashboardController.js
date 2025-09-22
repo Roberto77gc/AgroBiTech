@@ -270,7 +270,16 @@ const createActivity = async (req, res) => {
     }
     catch (error) {
         console.error('Error creating activity:', error);
-        res.status(500).json({ message: 'Error interno del servidor' });
+        if (error?.name === 'ValidationError') {
+            const details = {};
+            for (const key in (error.errors || {})) {
+                details[key] = error.errors[key]?.message || 'invalid';
+            }
+            res.status(400).json({ success: false, message: 'Datos inválidos', errors: details });
+            return;
+        }
+        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+        return;
     }
 };
 exports.createActivity = createActivity;

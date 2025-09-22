@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroBiTech - Revolutionize Your Agriculture with AI</title>
+    <meta name="description" content="AgroBiTech is the first agricultural platform with Artificial Intelligence. Control costs, optimize resources and maximize your production with cutting-edge technology for small and medium farmers.">
+    <meta name="keywords" content="agriculture, artificial intelligence, AI, agricultural management, fertigation, phytosanitary, inventory, analytics, agriculture 4.0, small farmers, medium farmers">
+    <meta name="author" content="AgroBiTech">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.agrobitech.com/">
+    <meta property="og:title" content="AgroBiTech - Revolutionize Your Agriculture with AI">
+    <meta property="og:description" content="The first agricultural platform with integrated Artificial Intelligence to maximize your productivity.">
+    <meta property="og:image" content="https://www.agrobitech.com/og-image.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.agrobitech.com/">
+    <meta property="twitter:title" content="AgroBiTech - Revolutionize Your Agriculture with AI">
+    <meta property="twitter:description" content="The first agricultural platform with integrated Artificial Intelligence to maximize your productivity.">
+    <meta property="twitter:image" content="https://www.agrobitech.com/og-image.jpg">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2d5016;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 2rem;
+        }
+
+        .logo::before {
+            content: "🌱";
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #2d5016;
+        }
+
+        .cta-button {
+            background: #2d5016;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.3rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            margin-right: 200px;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 140px 0 100px;
+            text-align: center;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .btn-primary.coming-soon {
+            background: linear-gradient(45deg, #6c757d, #495057);
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+        }
+
+        .btn-primary.coming-soon:hover {
+            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            padding: 1rem 2rem;
+            border: 2px solid white;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 4rem;
+            color: #2d5016;
+        }
+
+        .features .subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            color: #666;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .ai-features {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 60px 0;
+            margin: 40px 0;
+        }
+
+        .ai-features h3 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: #2d5016;
+        }
+
+        .ai-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            justify-items: center;
+        }
+
+        .ai-feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .ai-feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .ai-feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .ai-feature-card h4 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 80px 0;
+            background: #2d5016;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            color: #ffd700;
+        }
+
+        .stat-item p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .stats .subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 80px 0;
+            background: #f8f9fa;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+
+        /* Footer */
+        footer {
+            background: #2d5016;
+            color: white;
+            padding: 60px 0 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1.5rem;
+            color: #ffd700;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .footer-section p, .footer-section a {
+            color: #ccc;
+            text-decoration: none;
+            margin-bottom: 0.8rem;
+            display: block;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #444;
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        /* Language Switcher */
+        .language-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .language-switcher a {
+            text-decoration: none;
+            color: #2d5016;
+            font-weight: 600;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            display: inline-block;
+            padding: 0.2rem 0.4rem;
+            border-radius: 8px;
+        }
+
+        .language-switcher a:hover {
+            color: #ff6b6b;
+            transform: scale(1.1);
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        .language-switcher a.active {
+            color: #ff6b6b;
+            font-weight: bold;
+            background: rgba(255, 107, 107, 0.15);
+        }
+
+        .language-switcher a::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .language-switcher a:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                padding: 0 15px;
+            }
+            
+            .hero h1 {
+                font-size: 3rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+            
+            .ai-features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                justify-items: center;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .ai-features-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 120px 0 80px;
+            }
+            
+            .hero h1 {
+                font-size: 2.2rem;
+                line-height: 1.2;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .logo {
+                font-size: 1.8rem;
+            }
+            
+            .features h2 {
+                font-size: 2rem;
+            }
+            
+            .features .subtitle {
+                font-size: 1rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .ai-features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                justify-items: center;
+            }
+            
+            .ai-feature-card {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            
+            .stat-item h3 {
+                font-size: 2.5rem;
+            }
+            
+            .stat-item p {
+                font-size: 1rem;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 2rem;
+            }
+            
+            .footer-section h3 {
+                font-size: 1.3rem;
+            }
+            
+            .footer-section p, .footer-section a {
+                font-size: 1.1rem;
+            }
+            
+            .cta-section h2 {
+                font-size: 2rem;
+            }
+            
+            .cta-section p {
+                font-size: 1.1rem;
+            }
+            
+            .language-switcher {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 1rem auto;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.9);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-item h3 {
+                font-size: 2rem;
+            }
+            
+            .btn-primary, .btn-secondary {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+            
+            .cta-button {
+                padding: 0.7rem 1.2rem;
+                font-size: 1rem;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <a href="index-professional.html" data-tooltip="Español">ES</a>
+        <a href="index-professional-en.html" class="active" data-tooltip="English">EN</a>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="logo">AgroBiTech</div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#stats">Statistics</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <button onclick="showComingSoon()" class="cta-button">Coming Soon</button>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Revolutionize Your Agriculture with Intelligent Technology</h1>
+                    <p>AgroBiTech is the application designed for <strong>small and medium farmers</strong> that transforms modern agricultural management. Control costs, optimize resources and maximize your production with advanced digital tools.</p>
+                    <p class="subtitle">MVP Available • AI in Development • Cutting-Edge Technology</p>
+                    <div class="hero-buttons">
+                        <button onclick="showComingSoon()" class="btn-primary coming-soon">Coming Soon</button>
+                        <a href="#features" class="btn-secondary">View Features</a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="app-mockup">
+                        <div class="phone-mockup">
+                            <div class="phone-screen">
+                                <div class="app-header">
+                                    <div class="app-logo">
+                                        <div class="logo-icon">🌱</div>
+                                        <span>AgroBiTech</span>
+                                    </div>
+                                    <div class="app-menu">
+                                        <div class="menu-dot"></div>
+                                        <div class="menu-dot"></div>
+                                        <div class="menu-dot"></div>
+                                    </div>
+                                </div>
+                                <div class="app-content">
+                                    <div class="dashboard-card">
+                                        <div class="card-header">
+                                            <h3>My Farm</h3>
+                                            <div class="status-indicator online"></div>
+                                        </div>
+                                        <div class="stats-modern">
+                                            <div class="stat-modern">
+                                                <div class="stat-icon">🏞️</div>
+                                                <div class="stat-content">
+                                                    <span class="number">42</span>
+                                                    <span class="label">Hectares</span>
+                                                </div>
+                                            </div>
+                                            <div class="stat-modern">
+                                                <div class="stat-icon">🌾</div>
+                                                <div class="stat-content">
+                                                    <span class="number">15</span>
+                                                    <span class="label">Crops</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="chart-mini">
+                                            <div class="chart-bar" style="height: 60%"></div>
+                                            <div class="chart-bar" style="height: 80%"></div>
+                                            <div class="chart-bar" style="height: 45%"></div>
+                                            <div class="chart-bar" style="height: 90%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="dashboard-card">
+                                        <div class="card-header">
+                                            <h3>Fertigation Today</h3>
+                                            <div class="ai-badge">AI</div>
+                                        </div>
+                                        <div class="progress-modern">
+                                            <div class="progress-circle">
+                                                <svg viewBox="0 0 36 36" class="circular-chart">
+                                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                    <path class="circle" stroke-dasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                </svg>
+                                                <div class="progress-text">75%</div>
+                                            </div>
+                                        </div>
+                                        <div class="ai-suggestion">
+                                            <span class="ai-icon">🤖</span>
+                                            <span>AI recommends watering in 2h</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Why Choose AgroBiTech?</h2>
+            <p class="subtitle">Digital agricultural platform specifically designed for small and medium farmers</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💧</div>
+                    <h3>Smart Fertigation</h3>
+                    <p>Control daily fertigation with AI that predicts exact water and nutrient needs.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Predictive Phytosanitary</h3>
+                    <p>AI that anticipates pests and diseases, recommending optimal preventive treatments.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Automatic Inventory</h3>
+                    <p>Control your inventory with automatic low stock alerts and movement tracking.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>AI Analytics</h3>
+                    <p>Analyze costs per hectare, efficiency and trends to optimize your production with advanced algorithms.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Offline Mode</h3>
+                    <p>Work without internet connection. Your data syncs automatically when you reconnect.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Smart Templates</h3>
+                    <p>Create templates for repetitive activities and optimize your work time with AI.</p>
+                </div>
+            </div>
+            
+            <!-- AI Features Section -->
+            <div class="ai-features">
+                <h3>Cutting-Edge Technology</h3>
+                <div class="ai-features-grid">
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">🧠</div>
+                        <h4>Artificial Intelligence</h4>
+                        <p>Machine learning algorithms that learn from your crop patterns to optimize decisions.</p>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">🌤️</div>
+                        <h4>Weather Prediction</h4>
+                        <p>Integration with real-time meteorological data to plan irrigation and treatments.</p>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📄</div>
+                        <h4>Automatic PDF Reports</h4>
+                        <p>Generate detailed PDF reports with cost analysis, yields and recommendations.</p>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">⚡</div>
+                        <h4>Smart Automation</h4>
+                        <p>Automate repetitive tasks and send proactive alerts based on historical data.</p>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📸</div>
+                        <h4>Photo Analysis</h4>
+                        <p>Upload photos of your crops for automatic analysis of health, pests and growth.</p>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📈</div>
+                        <h4>Yield Prediction</h4>
+                        <p>AI that predicts future harvests based on historical data and current conditions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats" id="stats">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 1rem; color: white;">The Potential of AI in Your Agriculture</h2>
+            <p class="subtitle">Benefits demonstrated by Artificial Intelligence technology in the agricultural sector</p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>42%</h3>
+                    <p>Potential cost reduction</p>
+                </div>
+                <div class="stat-item">
+                    <h3>67%</h3>
+                    <p>Management time optimization</p>
+                </div>
+                <div class="stat-item">
+                    <h3>38%</h3>
+                    <p>Expected productivity increase</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Complete traceability guaranteed</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>Ready to transform your agriculture with AI?</h2>
+            <p>Join the farmers who are already revolutionizing their management with AgroBiTech</p>
+            <button onclick="showComingSoon()" class="btn-primary coming-soon">Coming Soon</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>AgroBiTech</h3>
+                    <p>Revolutionizing agriculture with cutting-edge technology.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Links</h3>
+                    <a href="#features">Features</a>
+                    <a href="#stats">Statistics</a>
+                    <a href="#contact">Contact</a>
+                </div>
+                <div class="footer-section">
+                    <h3>Contact</h3>
+                    <p>contacto@agrobitech.com</p>
+                    <a href="mailto:contacto@agrobitech.com?subject=Inquiry about AgroBiTech&body=Hello, I'm interested in learning more about AgroBiTech. Please send me information about:" onclick="sendEmail()">Send Email</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 AgroBiTech. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Coming Soon Modal -->
+    <div id="comingSoonModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 3rem; border-radius: 20px; text-align: center; max-width: 500px; margin: 20px;">
+            <div style="font-size: 4rem; margin-bottom: 1rem; color: #2d5016;">🌱</div>
+            <h2 style="color: #2d5016; margin-bottom: 1rem;">Coming Soon!</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; color: #666;">AgroBiTech is in final development. We are polishing the last details to offer you the best agricultural experience with AI.</p>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                <h3 style="color: #2d5016; margin-bottom: 1rem;">Want to be notified?</h3>
+                <p style="margin-bottom: 1rem;">Leave us your email and we will notify you when it's ready:</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                    <input type="email" id="emailInput" placeholder="your@email.com" style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;">
+                    <button onclick="subscribeEmail()" style="background: #2d5016; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">Subscribe</button>
+                </div>
+            </div>
+            <button onclick="closeComingSoon()" style="background: #6c757d; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold;">Close</button>
+        </div>
+    </div>
+
+    <!-- Smooth Scrolling -->
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Coming Soon Modal Functions
+        function showComingSoon() {
+            document.getElementById('comingSoonModal').style.display = 'flex';
+            trackEvent('click', 'Coming Soon', 'Modal Opened');
+        }
+
+        function closeComingSoon() {
+            document.getElementById('comingSoonModal').style.display = 'none';
+        }
+
+        function subscribeEmail() {
+            const email = document.getElementById('emailInput').value;
+            if (email && email.includes('@')) {
+                // Send email to contacto@agrobitech.com
+                const subject = 'New subscription - AgroBiTech Landing';
+                const body = `New interested in AgroBiTech:\n\nEmail: ${email}\nDate: ${new Date().toLocaleString()}\n\nThis email was sent from the landing page.`;
+                const mailtoLink = `mailto:contacto@agrobitech.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                
+                // Open email client
+                window.open(mailtoLink);
+                
+                // Show confirmation
+                alert('Thank you! Your email client will open to confirm the subscription.');
+                trackEvent('click', 'Email Subscription', email);
+                closeComingSoon();
+            } else {
+                alert('Please enter a valid email address.');
+            }
+        }
+        
+        function sendEmail() {
+            const subject = 'Inquiry about AgroBiTech';
+            const body = 'Hello, I\'m interested in learning more about AgroBiTech. Please send me information about:';
+            const email = 'contacto@agrobitech.com';
+            
+            // Try to open email client
+            const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            try {
+                // Method 1: Open in new window
+                window.open(mailtoLink, '_blank');
+                
+                // Method 2: If it doesn't work, show information
+                setTimeout(() => {
+                    if (confirm('Didn\'t your email client open? You can copy our email: contacto@agrobitech.com')) {
+                        // Copy email to clipboard
+                        navigator.clipboard.writeText('contacto@agrobitech.com').then(() => {
+                            alert('Email copied to clipboard: contacto@agrobitech.com');
+                        }).catch(() => {
+                            alert('Our email is: contacto@agrobitech.com');
+                        });
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                // Fallback: Show contact information
+                alert('Our email is: contacto@agrobitech.com\n\nSubject: ' + subject + '\n\nMessage: ' + body);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('comingSoonModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeComingSoon();
+            }
+        });
+
+        // Google Analytics Events
+        function trackEvent(action, category, label) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', action, {
+                    event_category: category,
+                    event_label: label
+                });
+            }
+        }
+
+        // Track CTA clicks
+        document.querySelectorAll('.btn-primary, .cta-button').forEach(button => {
+            button.addEventListener('click', function() {
+                trackEvent('click', 'CTA', this.textContent);
+            });
+        });
+    </script>
+</body>
+</html>

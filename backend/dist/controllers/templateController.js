@@ -7,15 +7,22 @@ exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = expor
 const Template_1 = __importDefault(require("../models/Template"));
 const listTemplates = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user?.userId;
+        if (!userId) {
+            console.error('No userId found in request');
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
         const type = req.query.type;
         const query = { userId };
         if (type)
             query.type = type;
+        console.log('Querying templates with:', query);
         const templates = await Template_1.default.find(query).sort({ updatedAt: -1 });
+        console.log('Found templates:', templates.length);
         return res.json({ success: true, templates });
     }
     catch (e) {
+        console.error('Error in listTemplates:', e);
         return res.status(500).json({ success: false, message: 'Error listando plantillas' });
     }
 };

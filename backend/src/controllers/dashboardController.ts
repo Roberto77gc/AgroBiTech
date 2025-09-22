@@ -354,9 +354,11 @@ export const createActivity = async (req: AuthenticatedRequest, res: Response) =
 				// @ts-ignore
 				details[key] = error.errors[key]?.message || 'invalid'
 			}
-			return res.status(400).json({ success: false, message: 'Datos inválidos', errors: details })
+			res.status(400).json({ success: false, message: 'Datos inválidos', errors: details })
+			return
 		}
-		return res.status(500).json({ success: false, message: 'Error interno del servidor' })
+		res.status(500).json({ success: false, message: 'Error interno del servidor' })
+		return
 	}
 }
 

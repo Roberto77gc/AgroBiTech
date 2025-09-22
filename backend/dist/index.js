@@ -20,19 +20,37 @@ const suppliers_1 = __importDefault(require("./routes/suppliers"));
 const purchases_1 = __importDefault(require("./routes/purchases"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const templates_1 = __importDefault(require("./routes/templates"));
+const waitlist_1 = __importDefault(require("./routes/waitlist"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
 app.use((0, helmet_1.default)({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+const allowedOrigins = [
+    process.env.FRONTEND_URL || '',
+    'https://app.agrobitech.com',
+    'http://localhost:5173',
+    'https://www.agrobitech.com',
+    'file://'
+].filter(Boolean);
+app.use((0, cors_1.default)({
+    origin: (origin, callback) => {
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin))
+            return callback(null, true);
+        if (origin.startsWith('file://'))
+            return callback(null, true);
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-};
-app.use((0, cors_1.default)(corsOptions));
+}));
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
     max: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
@@ -71,6 +89,7 @@ app.use('/api/products', products_1.default);
 app.use('/api/suppliers', suppliers_1.default);
 app.use('/api/purchases', purchases_1.default);
 app.use('/api/templates', templates_1.default);
+app.use('/api/waitlist', waitlist_1.default);
 const clientDistPath = path_1.default.resolve(__dirname, '../../agrodigital-mvp/dist');
 if (fs_1.default.existsSync(clientDistPath)) {
     app.use(express_1.default.static(clientDistPath));
@@ -112,6 +131,10 @@ app.get('/', (_req, res) => {
                 updateProduct: 'PUT /api/inventory/:productId',
                 deleteProduct: 'DELETE /api/inventory/:productId',
                 getLowStock: 'GET /api/inventory/:userId/low-stock'
+            },
+            waitlist: {
+                subscribe: 'POST /api/waitlist',
+                stats: 'GET /api/waitlist/stats'
             }
         }
     });

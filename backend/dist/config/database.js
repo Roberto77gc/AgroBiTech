@@ -63,6 +63,15 @@ class DatabaseConnection {
     getConnectionStatus() {
         return this.isConnected;
     }
+    getCollection(collectionName) {
+        if (!this.isConnected) {
+            throw new Error('Database not connected');
+        }
+        if (!mongoose_1.default.connection.db) {
+            throw new Error('MongoDB database connection not available');
+        }
+        return mongoose_1.default.connection.db.collection(collectionName);
+    }
 }
 exports.DatabaseConnection = DatabaseConnection;
 //# sourceMappingURL=database.js.map

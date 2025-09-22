@@ -134,6 +134,7 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
         subscribedAt: waitlistEntry.subscribedAt
       }
     });
+    return;
     
   } catch (error) {
     console.error('Error en waitlist:', error);
@@ -141,11 +142,12 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
       success: false,
       message: 'Error interno del servidor. Por favor, inténtalo de nuevo más tarde.'
     });
+    return;
   }
 });
 
 // GET /api/waitlist/stats - Estadísticas de la lista de espera (solo para admin)
-router.get('/stats', async (req: express.Request, res: express.Response) => {
+router.get('/stats', async (_req: express.Request, res: express.Response) => {
   try {
     const db = DatabaseConnection.getInstance();
     const collection = db.getCollection('waitlist');
@@ -182,6 +184,7 @@ router.get('/stats', async (req: express.Request, res: express.Response) => {
       success: false,
       message: 'Error obteniendo estadísticas'
     });
+    return;
   }
 });
 

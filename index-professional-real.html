@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroBiTech - Revoluciona tu Agricultura con Tecnología Inteligente</title>
+    <meta name="description" content="AgroBiTech es la primera plataforma agrícola con Inteligencia Artificial integrada. Controla costos, optimiza recursos y maximiza tu producción con herramientas digitales avanzadas para pequeños y medianos agricultores.">
+    <meta name="keywords" content="agricultura, inteligencia artificial, IA, gestión agrícola, fertirriego, fitosanitarios, inventario, analíticas, agricultura 4.0, pequeños agricultores, medianos agricultores">
+    <meta name="author" content="AgroBiTech">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.agrobitech.com/">
+    <meta property="og:title" content="AgroBiTech - Revoluciona tu Agricultura con Tecnología Inteligente">
+    <meta property="og:description" content="La primera plataforma agrícola con Inteligencia Artificial integrada para maximizar tu productividad.">
+    <meta property="og:image" content="https://www.agrobitech.com/og-image.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.agrobitech.com/">
+    <meta property="twitter:title" content="AgroBiTech - Revoluciona tu Agricultura con Tecnología Inteligente">
+    <meta property="twitter:description" content="La primera plataforma agrícola con Inteligencia Artificial integrada para maximizar tu productividad.">
+    <meta property="twitter:image" content="https://www.agrobitech.com/og-image.jpg">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 15px 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2d5016;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 2rem;
+        }
+
+        .logo::before {
+            content: '🌱';
+            font-size: 2.8rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            font-size: 1.3rem;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #2d5016;
+        }
+
+        .cta-button {
+            background: #2d5016;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 200px;
+        }
+
+        .cta-button:hover {
+            background: #1a3009;
+            transform: translateY(-2px);
+        }
+
+        /* Language Switcher */
+        .language-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .language-switcher button {
+            background: none;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .language-switcher button.active {
+            background: #2d5016;
+            color: white;
+        }
+
+        .language-switcher button:hover {
+            background: rgba(45, 80, 22, 0.1);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 120px 0 80px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .hero-text h1 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero-text p {
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .hero-text .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: #2d5016;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            background: #1a3009;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            padding: 15px 30px;
+            border: 2px solid white;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        /* App Mockup */
+        .app-mockup {
+            perspective: 1000px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .phone-mockup {
+            width: 300px;
+            height: 600px;
+            background: linear-gradient(135deg, #2d5016, #4CAF50);
+            border-radius: 40px;
+            position: relative;
+            transform: rotateY(-15deg) rotateX(5deg);
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 25px 50px rgba(0,0,0,0.4));
+            border: 8px solid #1a3009;
+        }
+
+        .phone-mockup:hover {
+            transform: rotateY(-10deg) rotateX(2deg);
+        }
+
+        .phone-screen {
+            position: absolute;
+            top: 40px;
+            left: 25px;
+            width: 250px;
+            height: 520px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 2px 4px rgba(0,0,0,0.1),
+                inset 0 -2px 4px rgba(0,0,0,0.05);
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #2d5016, #1a3009);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .app-menu {
+            display: flex;
+            gap: 4px;
+        }
+
+        .menu-dot {
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .app-content {
+            padding: 20px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-header h3 {
+            color: #2d5016;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .stats-modern {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat-modern {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .stat-icon {
+            font-size: 1.2rem;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(45, 80, 22, 0.1);
+            border-radius: 6px;
+        }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-content .number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2d5016;
+            line-height: 1;
+        }
+
+        .stat-content .label {
+            font-size: 0.6rem;
+            color: #666;
+            line-height: 1;
+        }
+
+        .chart-mini {
+            display: flex;
+            align-items: end;
+            gap: 3px;
+            height: 25px;
+            margin-top: 10px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(135deg, #2d5016, #4CAF50);
+            border-radius: 2px 2px 0 0;
+            min-height: 8px;
+        }
+
+        .progress-modern {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 50px;
+            height: 50px;
+        }
+
+        .circular-chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: #e9ecef;
+            stroke-width: 3;
+        }
+
+        .circle {
+            fill: none;
+            stroke: #2d5016;
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #2d5016;
+        }
+
+        .ai-suggestion {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #667eea;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Impact Stats Section */
+        .impact-stats {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #2d5016, #4CAF50);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .stat-card .stat-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .stat-card .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #2d5016;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .stat-description {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 4rem;
+            color: #2d5016;
+        }
+
+        .features .subtitle {
+            text-align: center;
+            font-size: 1.4rem;
+            margin-bottom: 3rem;
+            color: #666;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: 500;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .ai-features {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 60px 0;
+            margin: 40px 0;
+        }
+
+        .ai-features h3 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: #2d5016;
+        }
+
+        .ai-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            justify-items: center;
+        }
+
+        .ai-feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .ai-feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .ai-feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .ai-feature-card h4 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+        
+        .ai-feature-card p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+        
+        .roadmap-subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.available {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.development {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-badge.coming-soon {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 80px 0;
+            background: #2d5016;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            color: #ffd700;
+        }
+
+        .stat-item p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .stats .subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+
+        /* Trust Elements */
+        .trust-section {
+            margin-top: 4rem;
+            text-align: center;
+        }
+        
+        .trust-section h3 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .trust-item {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .trust-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .trust-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .trust-item h4 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+        
+        .trust-item p {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            background: #f8f9fa;
+            padding: 80px 0;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .pricing-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .pricing-card.featured {
+            border-color: #2d5016;
+            transform: scale(1.05);
+        }
+        
+        .pricing-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d5016;
+        }
+        
+        .price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #2d5016;
+            margin-bottom: 1rem;
+        }
+        
+        .price span {
+            font-size: 1rem;
+            color: #666;
+        }
+        
+        .pricing-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 2rem 0;
+        }
+        
+        .pricing-card li {
+            padding: 0.5rem 0;
+            color: #666;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 60px 0;
+            background: #2d5016;
+            color: white;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #ccc;
+        }
+
+        /* Footer */
+        footer {
+            background: #2d5016;
+            color: white;
+            padding: 40px 0 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1.5rem;
+            color: #ffd700;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .footer-section p, .footer-section a {
+            color: #ccc;
+            text-decoration: none;
+            margin-bottom: 0.8rem;
+            display: block;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        /* Contact Button Styles */
+        .contact-info {
+            text-align: center;
+        }
+
+        .contact-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #2d5016, #4CAF50);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(45, 80, 22, 0.3);
+            border: 2px solid transparent;
+        }
+
+        .contact-button:hover {
+            background: linear-gradient(135deg, #4CAF50, #2d5016);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(45, 80, 22, 0.4);
+            color: white;
+        }
+
+        .contact-button:active {
+            transform: translateY(0);
+        }
+
+        .contact-icon {
+            font-size: 1.2rem;
+        }
+
+        .contact-text {
+            font-weight: 600;
+        }
+
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #444;
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                padding: 0 15px;
+            }
+            
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 2rem;
+            }
+            
+            .hero-text {
+                text-align: center;
+            }
+            
+            .phone-mockup {
+                width: 300px;
+                height: 600px;
+            }
+            
+            .phone-screen {
+                top: 40px;
+                left: 25px;
+                width: 250px;
+                height: 520px;
+            }
+            
+            .hero h1 {
+                font-size: 3rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+            
+            .ai-features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                justify-items: center;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .ai-features-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 120px 0 80px;
+            }
+            
+            .hero h1 {
+                font-size: 2.2rem;
+                line-height: 1.2;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .logo {
+                font-size: 1.8rem;
+            }
+            
+            .features h2 {
+                font-size: 2rem;
+            }
+            
+            .features .subtitle {
+                font-size: 1rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .ai-features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                justify-items: center;
+            }
+            
+            .ai-feature-card {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            
+            .stat-item h3 {
+                font-size: 2.5rem;
+            }
+            
+            .stat-item p {
+                font-size: 1rem;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 2rem;
+            }
+            
+            .footer-section h3 {
+                font-size: 1.3rem;
+            }
+            
+            .footer-section p, .footer-section a {
+                font-size: 1.1rem;
+            }
+            
+            .cta-section h2 {
+                font-size: 2rem;
+            }
+            
+            .cta-section p {
+                font-size: 1.1rem;
+            }
+            
+            .language-switcher {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 1rem auto;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.9);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-item h3 {
+                font-size: 2rem;
+            }
+            
+            .btn-primary, .btn-secondary {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+            
+            .impact-stats {
+                padding: 60px 0;
+            }
+            
+            .impact-stats .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .stat-card {
+                padding: 30px 20px;
+            }
+            
+            .stat-card .stat-number {
+                font-size: 2.5rem;
+            }
+            
+            .cta-button {
+                padding: 0.7rem 1.2rem;
+                font-size: 1rem;
+                margin-right: 0;
+            }
+            
+            .phone-mockup {
+                width: 250px;
+                height: 500px;
+            }
+            
+            .phone-screen {
+                top: 30px;
+                left: 20px;
+                width: 210px;
+                height: 440px;
+            }
+            
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .trust-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <button class="active" onclick="switchLanguage('es')">ES</button>
+        <button onclick="switchLanguage('en')">EN</button>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">AgroBiTech</div>
+                <nav class="nav-links" role="navigation" aria-label="Navegación principal">
+                    <a href="#features" aria-label="Ir a características">Características</a>
+                    <a href="#stats" aria-label="Ir a estadísticas">Estadísticas</a>
+                    <a href="#contact" aria-label="Ir a contacto">Contacto</a>
+                </nav>
+                <button onclick="showComingSoon()" class="cta-button" aria-label="Próximamente disponible">Próximamente</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Revoluciona tu Agricultura con Tecnología Inteligente</h1>
+                    <p>AgroBiTech es la aplicación diseñada para <strong>pequeños y medianos agricultores</strong> que transforma la gestión agrícola moderna. Controla costos, optimiza recursos y maximiza tu producción con herramientas digitales avanzadas.</p>
+                    <p class="subtitle">MVP Disponible • IA en Desarrollo • Tecnología de Vanguardia</p>
+                    <div class="hero-buttons">
+                        <button onclick="showComingSoon()" class="btn-primary">Próximamente</button>
+                        <a href="#features" class="btn-secondary">Ver Características</a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="app-mockup">
+                        <div class="phone-mockup">
+                            <div class="phone-screen">
+                                <div class="app-header">
+                                    <div class="app-logo">
+                                        <div class="logo-icon">🌱</div>
+                                        <span>AgroBiTech</span>
+                                    </div>
+                                    <div class="app-menu">
+                                        <div class="menu-dot"></div>
+                                        <div class="menu-dot"></div>
+                                        <div class="menu-dot"></div>
+                                    </div>
+                                </div>
+                                <div class="app-content">
+                                    <div class="dashboard-card">
+                                        <div class="card-header">
+                                            <h3>Mi Finca</h3>
+                                            <div class="status-indicator online"></div>
+                                        </div>
+                                        <div class="stats-modern">
+                                            <div class="stat-modern">
+                                                <div class="stat-icon">🏞️</div>
+                                                <div class="stat-content">
+                                                    <span class="number">42</span>
+                                                    <span class="label">Hectáreas</span>
+                                                </div>
+                                            </div>
+                                            <div class="stat-modern">
+                                                <div class="stat-icon">🌾</div>
+                                                <div class="stat-content">
+                                                    <span class="number">15</span>
+                                                    <span class="label">Cultivos</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="chart-mini">
+                                            <div class="chart-bar" style="height: 60%"></div>
+                                            <div class="chart-bar" style="height: 80%"></div>
+                                            <div class="chart-bar" style="height: 45%"></div>
+                                            <div class="chart-bar" style="height: 90%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="dashboard-card">
+                                        <div class="card-header">
+                                            <h3>Fertirriego Hoy</h3>
+                                            <div class="ai-badge">AI</div>
+                                        </div>
+                                        <div class="progress-modern">
+                                            <div class="progress-circle">
+                                                <svg viewBox="0 0 36 36" class="circular-chart">
+                                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                    <path class="circle" stroke-dasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                </svg>
+                                                <div class="progress-text">75%</div>
+                                            </div>
+                                        </div>
+                                        <div class="ai-suggestion">
+                                            <span class="ai-icon">🤖</span>
+                                            <span>IA recomienda regar en 2h</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Stats Section -->
+    <section class="impact-stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-number">+40%</div>
+                    <div class="stat-label">Productividad</div>
+                    <div class="stat-description">Aumento promedio en la producción agrícola</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-number">-30%</div>
+                    <div class="stat-label">Costos</div>
+                    <div class="stat-description">Reducción en gastos operativos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏰</div>
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Monitoreo</div>
+                    <div class="stat-description">Seguimiento continuo de tu finca</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🌱</div>
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Sostenible</div>
+                    <div class="stat-description">Agricultura respetuosa con el medio ambiente</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2>¿Por qué elegir AgroBiTech?</h2>
+            <p class="subtitle">Plataforma agrícola digital diseñada específicamente para pequeños y medianos agricultores</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💧</div>
+                    <h3>Fertirriego Digital</h3>
+                    <p>Controla el fertirriego diario con registro detallado de agua y nutrientes aplicados.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Fitosanitarios</h3>
+                    <p>Gestiona tratamientos fitosanitarios con seguimiento de productos y fechas de aplicación.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Inventario Inteligente</h3>
+                    <p>Controla tu inventario con alertas de stock bajo y seguimiento de movimientos.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Analytics Avanzados</h3>
+                    <p>Analiza costos por hectárea, eficiencia y tendencias para optimizar tu producción.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Modo Offline</h3>
+                    <p>Trabaja sin conexión a internet. Tus datos se sincronizan automáticamente cuando vuelves a conectarte.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Plantillas Reutilizables</h3>
+                    <p>Crea plantillas para actividades repetitivas y optimiza tu tiempo de trabajo.</p>
+                </div>
+            </div>
+            
+            <!-- AI Features Section -->
+            <div class="ai-features">
+                <h3>Roadmap de Inteligencia Artificial</h3>
+                <p class="roadmap-subtitle">Estamos trabajando en estas funcionalidades avanzadas para el futuro</p>
+                <div class="ai-features-grid">
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">🧠</div>
+                        <h4>Inteligencia Artificial</h4>
+                        <p>Algoritmos de machine learning que aprenderán de tus patrones de cultivo para optimizar decisiones.</p>
+                        <span class="status-badge development">En Desarrollo</span>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">🌤️</div>
+                        <h4>Predicción Meteorológica</h4>
+                        <p>Integración con datos meteorológicos en tiempo real para planificar riegos y tratamientos.</p>
+                        <span class="status-badge coming-soon">Próximamente</span>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📄</div>
+                        <h4>Reportes PDF Automáticos</h4>
+                        <p>Genera informes detallados en PDF con análisis de costos, rendimientos y recomendaciones.</p>
+                        <span class="status-badge available">Disponible</span>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">⚡</div>
+                        <h4>Automatización Inteligente</h4>
+                        <p>Automatiza tareas repetitivas y envía alertas proactivas basadas en datos históricos.</p>
+                        <span class="status-badge development">En Desarrollo</span>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📸</div>
+                        <h4>Análisis por Fotografía</h4>
+                        <p>Sube fotos de tus cultivos para análisis automático de salud, plagas y crecimiento.</p>
+                        <span class="status-badge coming-soon">Próximamente</span>
+                    </div>
+                    <div class="ai-feature-card">
+                        <div class="ai-feature-icon">📈</div>
+                        <h4>Predicción de Rendimientos</h4>
+                        <p>IA que predice cosechas futuras basándose en datos históricos y condiciones actuales.</p>
+                        <span class="status-badge development">En Desarrollo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats" id="stats">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 1rem; color: white;">El Potencial de la IA en tu Agricultura</h2>
+            <p class="subtitle">Beneficios demostrados por la tecnología de Inteligencia Artificial en el sector agrícola</p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>42%</h3>
+                    <p>Potencial de reducción de costos</p>
+                </div>
+                <div class="stat-item">
+                    <h3>67%</h3>
+                    <p>Optimización del tiempo de gestión</p>
+                </div>
+                <div class="stat-item">
+                    <h3>38%</h3>
+                    <p>Aumento de productividad esperado</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Trazabilidad completa garantizada</p>
+                </div>
+            </div>
+            
+            <!-- Trust Elements -->
+            <div class="trust-section">
+                <h3>¿Por qué confiar en AgroBiTech?</h3>
+                <div class="trust-grid">
+                    <div class="trust-item">
+                        <div class="trust-icon">🔒</div>
+                        <h4>Seguridad Garantizada</h4>
+                        <p>Datos encriptados y almacenados en servidores seguros de la UE</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">⚡</div>
+                        <h4>Desarrollo Activo</h4>
+                        <p>Equipo de 15+ desarrolladores trabajando 24/7 en mejoras</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">🌱</div>
+                        <h4>Especialistas Agrícolas</h4>
+                        <p>Ingenieros agrícolas con 20+ años de experiencia en el sector</p>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">📱</div>
+                        <h4>Soporte 24/7</h4>
+                        <p>Asistencia técnica disponible cuando la necesites</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <h2>Modelo Flexible</h2>
+            <p class="subtitle">Adaptamos nuestros planes a las necesidades de tu explotación</p>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Plan Básico</h3>
+                    <div class="price">Gratuito</div>
+                    <ul>
+                        <li>✅ Gestión básica de cultivos</li>
+                        <li>✅ Registro de fertirriego</li>
+                        <li>✅ Control de inventario</li>
+                        <li>✅ Reportes PDF básicos</li>
+                        <li>✅ Soporte por email</li>
+                    </ul>
+                    <button onclick="showComingSoon()" class="btn-primary">Inscríbete</button>
+                </div>
+                <div class="pricing-card featured">
+                    <h3>Plan Avanzado</h3>
+                    <div class="price">Personalizado</div>
+                    <ul>
+                        <li>✅ Todo lo del plan básico</li>
+                        <li>✅ Analytics avanzados</li>
+                        <li>✅ Plantillas inteligentes</li>
+                        <li>✅ Soporte prioritario</li>
+                        <li>✅ Funcionalidades exclusivas</li>
+                        <li>🚀 IA cuando esté lista</li>
+                    </ul>
+                    <button onclick="showComingSoon()" class="btn-primary">Contactar</button>
+                </div>
+                <div class="pricing-card">
+                    <h3>Plan Enterprise</h3>
+                    <div class="price">A medida</div>
+                    <ul>
+                        <li>✅ Todo lo del plan avanzado</li>
+                        <li>✅ IA personalizada</li>
+                        <li>✅ Integraciones API</li>
+                        <li>✅ Soporte dedicado</li>
+                        <li>✅ Funcionalidades exclusivas</li>
+                        <li>✅ Capacitación incluida</li>
+                    </ul>
+                    <button onclick="showComingSoon()" class="btn-secondary">Contactar</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>¿Listo para transformar tu agricultura con tecnología?</h2>
+            <p>Únete a los agricultores que ya están revolucionando su gestión con AgroBiTech</p>
+            <button onclick="showComingSoon()" class="btn-primary coming-soon">Próximamente</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>AgroBiTech</h3>
+                    <p>Revolucionando la agricultura con tecnología de vanguardia.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Enlaces</h3>
+                    <a href="#features">Características</a>
+                    <a href="#stats">Estadísticas</a>
+                    <a href="#pricing">Precios</a>
+                </div>
+                <div class="footer-section">
+                    <h3>Contacto</h3>
+                    <div class="contact-info">
+                        <p style="margin-bottom: 10px; font-size: 1.1rem; color: #ffd700; font-weight: bold;">contacto@agrobitech.com</p>
+                        <p style="font-size: 0.9rem; color: #ccc; margin: 0; line-height: 1.4;">Escríbenos para más información sobre AgroBiTech</p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 AgroBiTech. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Coming Soon Modal -->
+    <div id="comingSoonModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+        <div style="background: white; padding: 3rem; border-radius: 20px; text-align: center; max-width: 500px; margin: 20px; width: 90%; max-width: 500px;" role="document">
+            <div style="font-size: 4rem; margin-bottom: 1rem; color: #2d5016;">🌱</div>
+            <h2 id="modal-title" style="color: #2d5016; margin-bottom: 1rem;">¡Únete a la Lista de Espera!</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; color: #666;">AgroBiTech está en desarrollo final. Sé de los primeros en acceder cuando lancemos la versión beta.</p>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                <h3 style="color: #2d5016; margin-bottom: 1rem;">¿Quieres ser notificado del lanzamiento?</h3>
+                <p style="margin-bottom: 1rem;">Déjanos tu email y te avisaremos cuando esté listo para probar:</p>
+                <form id="waitlistForm" style="display: flex; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <input type="email" id="emailInput" placeholder="tu@email.com" style="flex: 1; min-width: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;" aria-label="Introduce tu dirección de email" required>
+                    <button type="submit" style="background: #2d5016; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap;" aria-label="Inscribirse en la lista de espera">Inscríbete Ahora</button>
+                </form>
+                <p style="font-size: 0.9rem; color: #666; margin: 0;">📧 Te enviaremos actualizaciones exclusivas sobre el desarrollo</p>
+            </div>
+            <button onclick="closeComingSoon()" style="background: #6c757d; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold;">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // Language Switcher
+        function switchLanguage(lang) {
+            if (lang === 'en') {
+                window.location.href = 'index-professional-real-en.html';
+            } else {
+                window.location.href = 'index-professional-real.html';
+            }
+        }
+
+        // Coming Soon Modal
+        function showComingSoon() {
+            document.getElementById('comingSoonModal').style.display = 'flex';
+        }
+
+        function closeComingSoon() {
+            document.getElementById('comingSoonModal').style.display = 'none';
+        }
+
+        // Waitlist Form Handler
+        document.getElementById('waitlistForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('emailInput').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            
+            if (!email || !email.includes('@')) {
+                alert('Por favor, introduce un email válido.');
+                return;
+            }
+            
+            // Disable button and show loading
+            submitButton.disabled = true;
+            submitButton.textContent = 'Enviando...';
+            
+            try {
+                // Send to your Railway API
+                const response = await fetch('https://api.agrobitech.com/api/waitlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        source: 'landing_page',
+                        language: 'es'
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('¡Gracias! Te hemos añadido a la lista de espera. Te contactaremos pronto.');
+                    document.getElementById('emailInput').value = '';
+                    closeComingSoon();
+                } else {
+                    throw new Error('Error en el servidor');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al enviar el formulario. Por favor, inténtalo de nuevo o escríbenos a contacto@agrobitech.com');
+            } finally {
+                // Re-enable button
+                submitButton.disabled = false;
+                submitButton.textContent = 'Inscríbete Ahora';
+            }
+        });
+
+
+
+
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('comingSoonModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeComingSoon();
+            }
+        });
+
+        // Cerrar modal con tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeComingSoon();
+            }
+        });
+
+        // Smooth Scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                const headerHeight = 100;
+                const targetPosition = target.offsetTop - headerHeight;
+                
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

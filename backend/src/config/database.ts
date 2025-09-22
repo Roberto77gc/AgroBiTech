@@ -71,4 +71,16 @@ export class DatabaseConnection {
   public getConnectionStatus(): boolean {
     return this.isConnected;
   }
+
+  public getCollection(collectionName: string) {
+    if (!this.isConnected) {
+      throw new Error('Database not connected');
+    }
+    
+    if (!mongoose.connection.db) {
+      throw new Error('MongoDB database connection not available');
+    }
+    
+    return mongoose.connection.db.collection(collectionName);
+  }
 }
