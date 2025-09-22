@@ -1566,12 +1566,19 @@
                     })
                 });
                 
+                const data = await response.json();
+                
                 if (response.ok) {
                     alert('¡Gracias! Te hemos añadido a la lista de espera. Te contactaremos pronto.');
                     document.getElementById('emailInput').value = '';
                     closeComingSoon();
+                } else if (response.status === 409) {
+                    // Email ya registrado
+                    alert(data.message || 'Este email ya está en nuestra lista de espera. Te avisaremos cuando esté listo para probar.');
+                    document.getElementById('emailInput').value = '';
+                    closeComingSoon();
                 } else {
-                    throw new Error('Error en el servidor');
+                    throw new Error(data.message || 'Error en el servidor');
                 }
             } catch (error) {
                 console.error('Error:', error);

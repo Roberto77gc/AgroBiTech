@@ -1565,12 +1565,19 @@
                     })
                 });
                 
+                const data = await response.json();
+                
                 if (response.ok) {
                     alert('Thank you! We have added you to the waitlist. We will contact you soon.');
                     document.getElementById('emailInput').value = '';
                     closeComingSoon();
+                } else if (response.status === 409) {
+                    // Email already registered
+                    alert(data.message || 'This email is already on our waitlist. We will notify you when it\'s ready to test.');
+                    document.getElementById('emailInput').value = '';
+                    closeComingSoon();
                 } else {
-                    throw new Error('Server error');
+                    throw new Error(data.message || 'Server error');
                 }
             } catch (error) {
                 console.error('Error:', error);

@@ -80,7 +80,8 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'Este email ya está registrado en nuestra lista de espera'
+        message: 'Este email ya está en nuestra lista de espera. Te avisaremos cuando esté listo para probar.',
+        alreadySubscribed: true
       });
     }
     
