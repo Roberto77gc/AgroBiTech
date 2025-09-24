@@ -51,7 +51,7 @@ const emitDataChanged = (detail: { endpoint: string; method: string }) => {
 const authenticatedRequest = async (endpoint: string, options: RequestInit = {}) => {
 	const token = localStorage.getItem('token')
 	
-	if (IS_DEV) {
+	if (import.meta.env.DEV) {
 		console.log(`🌐 API Request: ${endpoint}`)
 		console.log(`🔑 Token presente: ${!!token}`)
 	}
@@ -73,7 +73,7 @@ const authenticatedRequest = async (endpoint: string, options: RequestInit = {})
 	
 	try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-		if (IS_DEV) console.log(`📡 Response status: ${response.status}`)
+  if (import.meta.env.DEV) console.log(`📡 Response status: ${response.status}`)
 
 		if (response.status === 401 || response.status === 403) {
 			console.warn('🔐 Token inválido o expirado. Redirigiendo al login...')
@@ -84,21 +84,21 @@ const authenticatedRequest = async (endpoint: string, options: RequestInit = {})
 
 		if (!response.ok) {
 			const errorText = await response.text()
-			if (IS_DEV) console.error(`❌ HTTP error! status: ${response.status}, body: ${errorText}`)
+   if (import.meta.env.DEV) console.error(`❌ HTTP error! status: ${response.status}, body: ${errorText}`)
 			const safeMsg = (() => { try { return JSON.parse(errorText)?.message } catch { return undefined } })()
 			emitApiError({ endpoint, status: response.status, message: safeMsg || `Error HTTP ${response.status}` })
 			throw new Error(`HTTP error! status: ${response.status}`)
 		}
 		
         const data = await response.json()
-		if (IS_DEV) console.log(`✅ API Response:`, data)
+  if (import.meta.env.DEV) console.log(`✅ API Response:`, data)
         const method = String((options.method || 'GET')).toUpperCase()
         if (method !== 'GET') {
             emitDataChanged({ endpoint, method })
         }
 		return data
 	} catch (error) {
-		if (IS_DEV) console.error(`❌ API Error:`, error)
+  if (import.meta.env.DEV) console.error(`❌ API Error:`, error)
 		throw error
 	}
 }

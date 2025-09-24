@@ -27,7 +27,7 @@ const getTransporter = async (): Promise<nodemailer.Transporter> => {
 		})
 		
 		// Verificar conexión SMTP
-		transporter.verify((error, success) => {
+		transporter.verify((error, _success) => {
 			if (error) {
 				console.error('❌ SMTP connection error:', error)
 			} else {

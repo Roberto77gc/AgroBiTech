@@ -32,6 +32,8 @@ const allowedOrigins = [
     'https://app.agrobitech.com',
     'http://localhost:5173',
     'https://www.agrobitech.com',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500',
     'file://'
 ].filter(Boolean);
 app.use((0, cors_1.default)({
@@ -45,6 +47,10 @@ app.use((0, cors_1.default)({
         if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
             return callback(null, true);
         }
+        if (origin.includes(':5500')) {
+            return callback(null, true);
+        }
+        console.log('CORS blocked origin:', origin);
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

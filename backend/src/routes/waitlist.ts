@@ -169,9 +169,9 @@ router.post('/', rateLimit, async (req: express.Request, res: express.Response) 
       } catch (emailError) {
         console.error('❌ Error enviando email de notificación:', emailError);
         console.error('❌ Detalles del error:', {
-          message: emailError.message,
-          code: emailError.code,
-          response: emailError.response
+          message: emailError instanceof Error ? emailError.message : String(emailError),
+          code: (emailError as any)?.code || 'unknown',
+          response: (emailError as any)?.response || 'unknown'
         });
       }
     }

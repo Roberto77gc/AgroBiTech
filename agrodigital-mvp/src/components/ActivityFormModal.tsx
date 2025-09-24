@@ -24,7 +24,7 @@ import type {
 } from '../types'
 import { formatCurrencyEUR } from '../utils/format'
 import { convertAmount } from '../utils/units'
-import { convertArea, formatArea } from '../utils/conversions'
+// import { convertArea, formatArea } from '../utils/conversions' // TODO: Remove if not used
 import { productAPI, supplierAPI, purchaseAPI, inventoryAPI } from '../services/api'
 import StockBadge from './common/StockBadge'
 

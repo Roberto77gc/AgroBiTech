@@ -17,6 +17,17 @@ const getTransporter = async () => {
             auth: {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+        transporter.verify((error, _success) => {
+            if (error) {
+                console.error('❌ SMTP connection error:', error);
+            }
+            else {
+                console.log('✅ SMTP server is ready to take our messages');
             }
         });
         return transporter;
