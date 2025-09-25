@@ -5,10 +5,7 @@
 
 import sgMail from '@sendgrid/mail';
 
-// Configure SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+// SendGrid will be configured dynamically in each function call
 
 export interface SendGridEmailOptions {
   to: string;
@@ -23,18 +20,19 @@ export const sendEmailWithSendGrid = async (options: SendGridEmailOptions): Prom
       throw new Error('SENDGRID_API_KEY not configured');
     }
 
+    // Configure SendGrid API key dynamically
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
     const msg = {
       to: options.to,
-      from: {
-        email: 'contacto@agrobitech.com',
-        name: 'AgroBiTech'
-      },
+      from: 'contacto@agrobitech.com', // Simplified format
       subject: options.subject,
       text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
       html: options.html,
     };
 
     console.log('📧 Enviando email con SendGrid a:', options.to);
+    console.log('🔑 API Key configurada:', process.env.SENDGRID_API_KEY ? 'SÍ' : 'NO');
     
     const response = await sgMail.send(msg);
     
