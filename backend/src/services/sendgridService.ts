@@ -25,7 +25,10 @@ export const sendEmailWithSendGrid = async (options: SendGridEmailOptions): Prom
 
     const msg = {
       to: options.to,
-      from: 'contacto@agrobitech.com', // Simplified format
+      from: {
+        email: 'contacto@agrobitech.com',
+        name: 'AgroBiTech'
+      },
       subject: options.subject,
       text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
       html: options.html,
@@ -33,6 +36,10 @@ export const sendEmailWithSendGrid = async (options: SendGridEmailOptions): Prom
 
     console.log('📧 Enviando email con SendGrid a:', options.to);
     console.log('🔑 API Key configurada:', process.env.SENDGRID_API_KEY ? 'SÍ' : 'NO');
+    console.log('🔑 API Key completa:', process.env.SENDGRID_API_KEY);
+    console.log('📧 From email:', msg.from);
+    console.log('📧 To email:', msg.to);
+    console.log('📧 Subject:', msg.subject);
     
     const response = await sgMail.send(msg);
     
